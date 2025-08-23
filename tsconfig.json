@@ -1,0 +1,16 @@
+{
+  "extends": "@gilbarbara/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "downlevelIteration": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "~/*": ["src/*"]
+    },
+    "types": ["vitest/globals"],
+    "target": "ESNext"
+  },
+  "include": ["globals.d.ts", "src/**/*"]
+}
