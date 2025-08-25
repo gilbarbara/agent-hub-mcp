@@ -1,15 +1,16 @@
 # Agent Hub MCP
 
+[![npm version](https://badge.fury.io/js/agent-hub-mcp.svg)](https://badge.fury.io/js/agent-hub-mcp) [![Quality Assurance](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml/badge.svg)](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gilbarbara_agent-hub-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gilbarbara_agent-hub-mcp)
+
 A Model Context Protocol (MCP) server that enables communication and coordination between multiple Claude Code agents working across different repositories in a multi-service architecture.
 
 ## Features
 
-- 🔄 **Fast Communication**: Agent-to-agent messaging with Server-Sent Events (SSE)
+- 🔄 **Fast Communication**: Agent-to-agent messaging
 - 📦 **Shared Context Store**: Cross-repository state management
 - 📋 **Task Coordination**: Track and manage dependencies between agents
 - 🆔 **Smart Agent Registration**: Automatic project-based ID generation
-- 💾 **Persistent Storage**: File-based persistence in `.agent-hub` directory
-- 🌐 **HTTP Transport**: Modern HTTP/SSE transport with auto-registration
+- 💾 **Persistent Storage**: File-based persistence in `~/.agent-hub` directory
 
 ## Setup
 
@@ -234,7 +235,7 @@ src/
 ├── agents/          # Agent management (detection, registration, sessions)
 ├── context/         # Shared context service
 ├── messaging/       # Message handling
-├── servers/         # HTTP/MCP/SSE servers
+├── servers/         # HTTP/MCP servers
 ├── tasks/           # Task coordination
 ├── tools/           # MCP tool definitions
 ├── storage.ts       # File-based persistence
