@@ -1,19 +1,62 @@
 {
   "name": "agent-hub-mcp",
   "version": "0.0.0",
+  "description": "A Model Context Protocol (MCP) server that enables communication and coordination between multiple Claude Code agents working across different repositories in a multi-service architecture",
+  "author": "Gil Barbara <gilbarbara@gmail.com>",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "agent",
+    "coordination",
+    "communication",
+    "multi-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gilbarbara/agent-hub-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gilbarbara/agent-hub-mcp/issues"
+  },
+  "homepage": "https://github.com/gilbarbara/agent-hub-mcp#readme",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./http": {
+      "import": {
+        "types": "./dist/index-http.d.mts",
+        "default": "./dist/index-http.mjs"
+      },
+      "require": {
+        "types": "./dist/index-http.d.ts",
+        "default": "./dist/index-http.js"
+      }
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "http": ["./dist/index-http.d.ts"]
     }
   },
   "files": [
     "dist",
     "src"
   ],
-  "types": "dist/index.d.ts",
+  "bin": {
+    "agent-hub-mcp": "dist/index.js",
+    "agent-hub-mcp-http": "dist/index-http.js"
+  },
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
@@ -22,6 +65,7 @@
     "@types/uuid": "^10.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -49,8 +93,9 @@
     "watch": "tsup --watch",
     "clean": "del dist/*",
     "start": "node dist/index.js",
+    "start:http": "node dist/index-http.js",
     "dev": "tsx src/index.ts",
-    "dev:sse": "tsx src/sse-server.ts",
+    "dev:http": "tsx src/index-http.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
@@ -58,15 +103,15 @@
     "typecheck": "tsc",
     "typevalidation": "attw -P",
     "format": "prettier \"**/*.{css,graphql,js,json,jsx,less,md,mdx,scss,ts,tsx,yaml,yml}\" --write",
-    "size": "size-limit",
-    "validate": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run typevalidation",
+    "validate": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm typevalidation",
     "prepare": "husky",
     "prepublishOnly": "npm run validate"
   },
   "tsup": {
     "dts": true,
     "entry": [
-      "src/index.ts"
+      "src/index.ts",
+      "src/index-http.ts"
     ],
     "format": [
       "cjs",
@@ -87,17 +132,5 @@
       "no-empty-function": "off"
     }
   },
-  "prettier": "@gilbarbara/prettier-config",
-  "size-limit": [
-    {
-      "name": "commonjs",
-      "path": "./dist/index.js",
-      "limit": "15 kB"
-    },
-    {
-      "name": "esm",
-      "path": "./dist/index.mjs",
-      "limit": "15 kB"
-    }
-  ]
+  "prettier": "@gilbarbara/prettier-config"
 }
