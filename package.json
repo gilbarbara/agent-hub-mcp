@@ -1,6 +1,6 @@
 {
   "name": "agent-hub-mcp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A Model Context Protocol (MCP) server that enables communication and coordination between multiple Claude Code agents working across different repositories in a multi-service architecture",
   "author": "Gil Barbara <gilbarbara@gmail.com>",
   "keywords": [
@@ -46,7 +46,9 @@
   },
   "typesVersions": {
     "*": {
-      "http": ["./dist/index-http.d.ts"]
+      "http": [
+        "./dist/index-http.d.ts"
+      ]
     }
   },
   "files": [
