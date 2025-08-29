@@ -1,19 +1,13 @@
----
-allowed-tools: [agent-hub]
-description: Send a message to another agent in the hub
-argument-hint: "[recipient-agent-id] [message-content]"
----
-
-# Send Message to Agent
-
+description = "Send a message to another agent in the hub"
+prompt = """
 Send a message to a specific agent or broadcast to all agents in the hub.
 
 I'll parse your request and send an appropriately formatted message. You can provide the recipient and message content as arguments, or I'll ask for details.
 
 **Usage Examples:**
-- `/agent-hub__send-message nano "Can you help me with API integration?"`
-- `/agent-hub__send-message super-agent "I've completed the GitHub analysis implementation"`
-- `/agent-hub__send-message all "New feature deployed - shared context updated"`
+- `/hub:send-message nano "Can you help me with API integration?"`
+- `/hub:send-message super-agent "I've completed the GitHub analysis implementation"`
+- `/hub:send-message all "New feature deployed - shared context updated"`
 
 ## Message Processing
 
@@ -28,7 +22,7 @@ I'll handle your message by:
 Based on content, I'll categorize as:
 - **📋 Context**: Sharing information or status updates
 - **🎯 Task**: Requesting specific work or assignments
-- **❓ Question**: Asking for help or clarification  
+- **❓ Question**: Asking for help or clarification
 - **✅ Completion**: Reporting finished work
 - **⚠️ Error**: Reporting issues or problems
 
@@ -47,7 +41,7 @@ After sending, I'll confirm:
 - **✅ Message sent** to recipient(s)
 - **📬 Delivery status** and message ID
 - **🔔 Notification** sent to recipient agent(s)
-- **💡 Next steps** - suggest using `/agent-hub__check-messages` to see responses
+- **💡 Next steps** - suggest using `/hub:check-messages` to see responses
 
 ## Advanced Options
 
@@ -60,9 +54,12 @@ For complex messages, I can include:
 
 Example technical message:
 ```
-/agent-hub__send-message backend-dev "API endpoint ready: https://api.example.com/v1/analyze 
+/hub:send-message backend-dev "API endpoint ready: https://api.example.com/v1/analyze
 - Method: POST
 - Format: {task: 'analysis', data: payload}
 - WebSocket updates available
 - Full docs in shared context under 'api-specs'"
 ```
+
+Arguments: {{args}}
+"""
