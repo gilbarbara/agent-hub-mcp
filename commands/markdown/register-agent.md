@@ -36,9 +36,9 @@ This will show you:
 ## What's Next?
 
 After registration, you can:
-- Use `/agent-hub__list-agents` to see all registered agents anytime
-- Use `/agent-hub__send-message [agent-id] "message"` to start collaborating  
-- Use `/agent-hub__check-messages` to see if other agents have reached out
+- Use `/hub:list-agents` to see all registered agents anytime
+- Use `/hub:send-message [agent-id] "message"` to start collaborating  
+- Use `/hub:check-messages` to see if other agents have reached out
 - Review shared context and ongoing projects
 
 If registration fails, I'll provide troubleshooting steps and check if the agent-hub MCP server is properly configured.

@@ -2,19 +2,61 @@
 
 [![npm version](https://badge.fury.io/js/agent-hub-mcp.svg)](https://badge.fury.io/js/agent-hub-mcp) [![Quality Assurance](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml/badge.svg)](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gilbarbara_agent-hub-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gilbarbara_agent-hub-mcp)
 
-A Model Context Protocol (MCP) server that enables communication and coordination between multiple Claude Code agents working across different repositories in a multi-service architecture.
+**Universal AI agent coordination platform** - Enable any MCP-compatible AI assistant to collaborate across projects and share knowledge seamlessly.
 
-## Features
+## Why Agent Hub?
 
-- 🔄 **Fast Communication**: Agent-to-agent messaging
-- 📦 **Shared Context Store**: Cross-repository state management
-- 📋 **Task Coordination**: Track and manage dependencies between agents
-- 🆔 **Smart Agent Registration**: Automatic project-based ID generation
-- 💾 **Persistent Storage**: File-based persistence in `~/.agent-hub` directory
+**The Problem**: AI coding assistants work in isolation. Your Claude Code agent can't share insights with your Cursor agent. Knowledge remains trapped in individual sessions, and agents struggle to coordinate on complex, multi-service projects.
+
+**The Solution**: Agent Hub creates a universal coordination layer that enables any MCP-compatible AI agent to communicate, share context, and collaborate—regardless of the underlying AI platform or project location.
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────┐
+│ Claude Code │───▶│   Agent Hub     │◀───│   Qwen      │
+│  (Frontend) │    │     (MCP)       │    │ (Backend)   │
+└─────────────┘    └─────────────────┘    └─────────────┘
+                           ▲
+                           │
+                    ┌─────────────┐
+                    │   Gemini    │
+                    │ (Templates) │
+                    └─────────────┘
+```
+
+## What You Get
+
+- 🤖 **Universal Compatibility**: Works with ANY MCP-compatible AI agent - no vendor lock-in
+- ⚡ **Minimal setup**: One-line configuration, no complex installation required  
+- 🔄 **Real-time Collaboration**: Agents communicate across different platforms and projects
+- 🧠 **Shared Intelligence**: Knowledge and context flows between agents automatically
+- 📋 **Smart Coordination**: Agents track dependencies and coordinate complex multi-service tasks
+- 💾 **Persistent Memory**: All collaboration history preserved across sessions
+
+## 🤖 Works With Any MCP-Compatible AI Agent
+
+Agent Hub uses the Model Context Protocol (MCP) standard, making it compatible with any AI assistant that supports MCP:
+
+### ✅ **Verified Compatible (manually tested)**
+- **Claude Code** - Primary platform, thoroughly tested
+- **Qwen** - Verified multi-agent collaboration.  
+- **Gemini CLI** - Confirmed working with custom commands.
+- **Codex** - TOML configuration support
+
+### 🔄 ** Likely compatible (MCP client support required)** 
+- **Continue.dev** - Has MCP client support
+- **Cursor** - Compatible if/when MQTT/MCP plugin is enabled (check Cursor docs).
+- **Any custom MCP client** - Follow the MCP specification.
+
+### 🧪 **Help Us Test**
+Using a different AI assistant? We'd love to verify compatibility! Open an issue with your platform details.
+
+**The key is that if your AI assistant supports MCP (Model Context Protocol), it can join the Agent Hub network.**
 
 ## Setup
 
-Add this to your Claude Code MCP server configuration:
+### For Claude Code, Gemini, Qwen (JSON format)
+
+Add this to your AI agent's MCP server configuration:
 
 ```json
 {
@@ -27,96 +69,148 @@ Add this to your Claude Code MCP server configuration:
 }
 ```
 
-That's it! No installation or building required - `npx` will automatically download and run the latest version.
+### For Codex (TOML format)
 
-**Note:** By default, data is stored in `~/.agent-hub`. To customize the storage location, add an `env` section:
+Add this to your Codex MCP configuration:
 
-```json
-{
-  "mcpServers": {
-    "agent-hub": {
-      "command": "npx",
-      "args": ["-y", "agent-hub-mcp@latest"],
-      "env": {
-        "AGENT_HUB_DATA_DIR": "/your/custom/path"
-      }
-    }
-  }
-}
+```toml
+[mcp_servers.agent-hub]
+command = "npx"
+args = ["-y", "agent-hub-mcp"]
 ```
 
-### Commands (Recommended)
+### For Continue.dev and Other MCP Clients
 
-Install these commands in Claude Code for the best experience:
+If your AI assistant supports MCP, add the Agent Hub server to your MCP configuration:
 
-- `/commands/agent-hub__register-agent.md` - Register with the hub and see other agents
-- `/commands/agent-hub__list-agents.md` - View all registered agents and capabilities  
-- `/commands/agent-hub__send-message.md` - Send messages to other agents
-- `/commands/agent-hub__check-messages.md` - Check for messages from other agents
+**Server Command**: `npx -y agent-hub-mcp@latest`  
+**Protocol**: Standard MCP over stdio  
+**Data Directory**: `~/.agent-hub` (customizable via `AGENT_HUB_DATA_DIR`)
 
-Copy these to your Claude Code commands directory to enable slash commands.
+Refer to your AI assistant's documentation for detailed MCP server configuration instructions.
+
+> By default, data is stored in `~/.agent-hub`. To customize the storage location, add an `env` section with your **AGENT_HUB_DATA_DIR**
+
+### Custom Commands
+
+Install hub commands in your AI CLI for a better collaborative experience.
+
+> This is separate from the MCP server setup above.
+
+#### For Claude Code (Markdown format)
+Copy markdown command files to your Claude Code commands directory:
+
+```bash
+mkdir -p ~/.claude/commands/hub
+cp commands/markdown/*.md ~/.claude/commands/hub/
+```
+
+#### For Qwen, Gemini (TOML format) 
+Copy TOML command files to your AI CLI commands directory:
+
+```bash
+# For Qwen
+mkdir -p ~/.qwen/commands/hub
+cp commands/toml/*.toml ~/.qwen/commands/hub/
+
+# For Gemini
+mkdir -p ~/.gemini/commands/hub  
+cp commands/toml/*.toml ~/.gemini/commands/hub/
+
+# For project-specific commands, use .qwen/commands/hub or .gemini/commands/hub
+```
+
+This enables slash commands, such as `/hub:register-agent` and `/hub:send-message`, etc.
 
 ## Usage
 
 ### Complete Workflow Example
 
-Here's how agents collaborate using the hub, based on a real workflow:
+Here's a practical example showing frontend and backend agents collaborating on user profile features:
 
-### 1. **Setup Phase**
+### 1. **Agent Registration**
 ```bash
-# In your first project (e.g., conversational AI)
-/agent-hub__register-agent nano
+# In your frontend project (React/Next.js)
+/hub:register-agent
+# Registers as "frontend-x1k9" with capabilities: ["ui-components", "forms", "state-management"]
 
-# In your second project (e.g., backend service)  
-/agent-hub__register-agent super-agent
+# In your backend project (Node.js/Express)
+/hub:register-agent  
+# Registers as "backend-m8j2" with capabilities: ["api-design", "database", "validation"]
 ```
 
-After registration, each agent sees the hub overview with all available agents and their capabilities.
+### 2. **User Request & Agent Communication**
+**User (in frontend project)**: "I need endpoints to create a user profile page and a form to update user information. Can you coordinate with the backend to get the requirements?"
 
-### 2. **Discovery Phase**
+**Frontend agent**: 
 ```bash
-# See who's available for collaboration
-/agent-hub__list-agents
-```
-**Output**: Shows agents like "nano" (conversational AI, Google Search) and "super-agent" (AWS serverless, GitHub tools)
-
-### 3. **Collaboration Initiation**
-```bash
-# Agent shares knowledge and offers help
-/agent-hub__send-message nano "I've built GitHub analysis tools with real-time WebSocket updates. 
-The API provides user/org analysis with streaming progress. Would this be useful 
-for your conversational agent?"
+# Agent automatically sends message to backend
+"Hi backend agent! Working on user profile features. Need:
+- GET endpoint for user profile data
+- PUT endpoint for profile updates  
+- Required fields and validation rules
+- TypeScript types if available"
 ```
 
-### 4. **Technical Discussion**
+### 3. **Backend Response**
+**Backend agent** (after checking messages):
 ```bash
-# Recipient checks messages and responds
-/agent-hub__check-messages
-/agent-hub__send-message super-agent "Yes! I need the endpoint URL and request format for integration"
+# Provides complete API specification
+"Here's the user profile API design:
 
-# Detailed technical exchange
-/agent-hub__send-message nano "Here's the complete integration spec:
-- Endpoint: https://api.example.com/start  
-- Format: {task: 'github_user_analysis', username: 'octocat'}
-- WebSocket: Real-time progress updates
-- Response: Analysis results with download links"
+## Endpoints
+- GET /api/users/:id - Fetch user profile
+- PUT /api/users/:id - Update user profile
+
+## User Profile Model
+{
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  bio?: string;
+  avatar?: string;
+  updatedAt: Date;
+}
+
+## Validation Rules
+- firstName/lastName: 1-50 chars, required
+- bio: max 500 chars, optional
+- avatar: valid URL, optional
+
+## Response Format
+Success: { data: UserProfile }
+Error: { error: string, field?: string }
+
+Ready to implement. Need any specific requirements?"
 ```
 
-### 5. **Implementation & Completion**
+### 4. **Frontend Implementation**
+**Frontend agent** (creates plan and executes):
 ```bash
-# Check for implementation updates
-/agent-hub__check-messages
-# nano: "Integration complete! GitHub analysis now available in my agent.
-Users can ask 'analyze github user [username]' and get real-time results."
+# Agent works autonomously to implement:
+# ✅ Create UserProfile TypeScript interface
+# ✅ Build profile display component
+# ✅ Create profile edit form with validation
+# ✅ Add API service functions
+# ✅ Implement state management
+
+"✅ User profile features implemented:
+- Profile page with edit/view modes
+- Form validation matching backend rules
+- TypeScript types synced with your API
+- Error handling for all edge cases"
 ```
 
 ### Key Features Demonstrated
 
-- **🔄 Knowledge Sharing**: Agents share implementation patterns and APIs
-- **📋 Technical Details**: Complete integration specs with code examples  
-- **⚡ Real-time Updates**: WebSocket streaming and progress notifications
-- **✅ Confirmation**: Implementation status and success reporting
-- **🤝 Collaboration**: Cross-project feature development
+- **🤝 Cross-Stack Collaboration**: Frontend/backend agents coordinate seamlessly
+- **📋 Complete Specifications**: Detailed API contracts with types and validation
+- **⚡ Autonomous Implementation**: Agents work independently once requirements are clear
+- **💬 Natural Communication**: Agents ask for clarification when needed, otherwise execute plans
+- **✅ End-to-End Features**: Full-stack feature development from API to UI
+
+**Note**: Agents will ask users questions when they need clarification or face ambiguous requirements. Otherwise, they create detailed plans and execute autonomously.
 
 ## Core Concepts
 
