@@ -2,16 +2,55 @@
 
 [![npm version](https://badge.fury.io/js/agent-hub-mcp.svg)](https://badge.fury.io/js/agent-hub-mcp) [![Quality Assurance](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml/badge.svg)](https://github.com/gilbarbara/agent-hub-mcp/actions/workflows/quality-assurance.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gilbarbara_agent-hub-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gilbarbara_agent-hub-mcp)
 
-A Model Context Protocol (MCP) server that enables communication and coordination between multiple AI coding agents (Claude Code, Qwen, Gemini, Codex) working across different repositories in a multi-service architecture.
+**Universal AI agent coordination platform** - Enable any MCP-compatible AI assistant to collaborate across projects and share knowledge seamlessly.
 
-## Features
+## Why Agent Hub?
 
-- 🤖 **Multi-AI Support**: Works with Claude Code, Qwen, Gemini, Codex, and other MCP-compatible AI agents
-- 🔄 **Fast Communication**: Agent-to-agent messaging across different AI platforms
-- 📦 **Shared Context Store**: Cross-repository state management
-- 📋 **Task Coordination**: Track and manage dependencies between agents
-- 🆔 **Smart Agent Registration**: Automatic project-based ID generation
-- 💾 **Persistent Storage**: File-based persistence in `~/.agent-hub` directory
+**The Problem**: AI coding assistants work in isolation. Your Claude Code agent can't share insights with your Cursor agent. Knowledge remains trapped in individual sessions, and agents struggle to coordinate on complex, multi-service projects.
+
+**The Solution**: Agent Hub creates a universal coordination layer that enables any MCP-compatible AI agent to communicate, share context, and collaborate—regardless of the underlying AI platform or project location.
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────┐
+│ Claude Code │───▶│   Agent Hub     │◀───│   Qwen      │
+│  (Frontend) │    │     (MCP)       │    │ (Backend)   │
+└─────────────┘    └─────────────────┘    └─────────────┘
+                           ▲
+                           │
+                    ┌─────────────┐
+                    │   Gemini    │
+                    │ (Templates) │
+                    └─────────────┘
+```
+
+## What You Get
+
+- 🤖 **Universal Compatibility**: Works with ANY MCP-compatible AI agent - no vendor lock-in
+- ⚡ **Minimal setup**: One-line configuration, no complex installation required  
+- 🔄 **Real-time Collaboration**: Agents communicate across different platforms and projects
+- 🧠 **Shared Intelligence**: Knowledge and context flows between agents automatically
+- 📋 **Smart Coordination**: Agents track dependencies and coordinate complex multi-service tasks
+- 💾 **Persistent Memory**: All collaboration history preserved across sessions
+
+## 🤖 Works With Any MCP-Compatible AI Agent
+
+Agent Hub uses the Model Context Protocol (MCP) standard, making it compatible with any AI assistant that supports MCP:
+
+### ✅ **Verified Compatible (manually tested)**
+- **Claude Code** - Primary platform, thoroughly tested
+- **Qwen** - Verified multi-agent collaboration.  
+- **Gemini CLI** - Confirmed working with custom commands.
+- **Codex** - TOML configuration support
+
+### 🔄 ** Likely compatible (MCP client support required)** 
+- **Continue.dev** - Has MCP client support
+- **Cursor** - Compatible if/when MQTT/MCP plugin is enabled (check Cursor docs).
+- **Any custom MCP client** - Follow the MCP specification.
+
+### 🧪 **Help Us Test**
+Using a different AI assistant? We'd love to verify compatibility! Open an issue with your platform details.
+
+**The key is that if your AI assistant supports MCP (Model Context Protocol), it can join the Agent Hub network.**
 
 ## Setup
 
@@ -40,15 +79,23 @@ command = "npx"
 args = ["-y", "agent-hub-mcp"]
 ```
 
-That's it! No installation or building required - `npx` will automatically download and run the latest version.
+### For Continue.dev and Other MCP Clients
 
-**Note:** By default, data is stored in `~/.agent-hub`. To customize the storage location, add an `env` section with your **AGENT_HUB_DATA_DIR**
+If your AI assistant supports MCP, add the Agent Hub server to your MCP configuration:
+
+**Server Command**: `npx -y agent-hub-mcp@latest`  
+**Protocol**: Standard MCP over stdio  
+**Data Directory**: `~/.agent-hub` (customizable via `AGENT_HUB_DATA_DIR`)
+
+Refer to your AI assistant's documentation for detailed MCP server configuration instructions.
+
+> By default, data is stored in `~/.agent-hub`. To customize the storage location, add an `env` section with your **AGENT_HUB_DATA_DIR**
 
 ### Custom Commands
 
 Install hub commands in your AI CLI for a better collaborative experience.
 
-> Note: This is separate from the MCP server setup above.
+> This is separate from the MCP server setup above.
 
 #### For Claude Code (Markdown format)
 Copy markdown command files to your Claude Code commands directory:
@@ -73,7 +120,7 @@ cp commands/toml/*.toml ~/.gemini/commands/hub/
 # For project-specific commands, use .qwen/commands/hub or .gemini/commands/hub
 ```
 
-This enables slash commands, such as/hub:register-agent and`/hub:send-message`, etc.
+This enables slash commands, such as `/hub:register-agent` and `/hub:send-message`, etc.
 
 ## Usage
 
