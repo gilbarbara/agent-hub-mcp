@@ -1,4 +1,4 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server } from '@modelcontextprotocol/sdk/server';
 import {
   CallToolRequestSchema,
   InitializeRequestSchema,
@@ -7,13 +7,13 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { AgentSession } from '../agents/session';
-import { ContextService } from '../context/service';
-import { MessageService } from '../messaging/service';
-import { FileStorage } from '../storage';
-import { TaskService } from '../tasks/service';
-import { TOOLS } from '../tools/definitions';
-import { createToolHandlers, ToolHandlerServices } from '../tools/handlers';
+import { AgentSession } from '~/agents/session';
+import { ContextService } from '~/context/service';
+import { MessageService } from '~/messaging/service';
+import { StorageAdapter } from '~/storage';
+import { TaskService } from '~/tasks/service';
+import { TOOLS } from '~/tools/definitions';
+import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';
 
 export interface McpServerDependencies {
   broadcastNotification: (method: string, params: any) => Promise<void>;
@@ -22,7 +22,7 @@ export interface McpServerDependencies {
   messageService: MessageService;
   sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
-  storage: FileStorage;
+  storage: StorageAdapter;
   taskService: TaskService;
 }
 

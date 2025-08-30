@@ -5,12 +5,12 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import rateLimit from 'express-rate-limit';
 
-import { AgentStatusCleanup } from '../agents/cleanup';
-import { AgentSession, SessionManager } from '../agents/session';
-import { ContextService } from '../context/service';
-import { MessageService } from '../messaging/service';
-import { FileStorage } from '../storage';
-import { TaskService } from '../tasks/service';
+import { AgentStatusCleanup } from '~/agents/cleanup';
+import { AgentSession, SessionManager } from '~/agents/session';
+import { ContextService } from '~/context/service';
+import { MessageService } from '~/messaging/service';
+import { StorageAdapter } from '~/storage';
+import { TaskService } from '~/tasks/service';
 
 import { createMcpServer } from './mcp';
 import { NotificationService } from './notifications';
@@ -18,7 +18,7 @@ import { NotificationService } from './notifications';
 export interface HttpServerDependencies {
   contextService: ContextService;
   messageService: MessageService;
-  storage: FileStorage;
+  storage: StorageAdapter;
   taskService: TaskService;
 }
 
@@ -52,14 +52,30 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
           return;
         }
 
-        // Allow localhost and 127.0.0.1 with any port
-        const allowedPatterns = [
-          /^http:\/\/localhost(:\d+)?$/,
-          /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-          /^https:\/\/claude\.ai$/,
+        // Allow only specific localhost ports and official Claude.ai domains
+        const defaultAllowedOrigins = [
+          // Development servers on common ports
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:8080',
+          'http://localhost:5173', // Vite default
+          'http://localhost:4173', // Vite preview
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:3001',
+          'http://127.0.0.1:8080',
+          'http://127.0.0.1:5173',
+          'http://127.0.0.1:4173',
+          // Official Claude.ai domains only
+          'https://claude.ai',
+          'https://www.claude.ai',
         ];
 
-        const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
+        // Allow additional origins from environment variable (comma-separated)
+        const additionalOrigins =
+          process.env.AGENT_HUB_ALLOWED_ORIGINS?.split(',').map(s => s.trim()) || [];
+        const allowedOrigins = [...defaultAllowedOrigins, ...additionalOrigins];
+
+        const isAllowed = allowedOrigins.includes(origin);
 
         if (isAllowed) {
           callback(null, true);

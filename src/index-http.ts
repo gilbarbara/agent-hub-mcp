@@ -3,12 +3,26 @@
 import { ContextService } from './context/service';
 import { MessageService } from './messaging/service';
 import { createHttpServer } from './servers/http';
-import { FileStorage } from './storage';
+import { FileStorage, IndexedStorage, StorageAdapter } from './storage';
 import { TaskService } from './tasks/service';
+
+// Choose storage implementation based on environment variable
+function createStorage(): StorageAdapter {
+  const dataDirectory = process.env.AGENT_HUB_DATA_DIR ?? '~/.agent-hub';
+  const storageType = process.env.AGENT_HUB_STORAGE_TYPE ?? 'indexed';
+
+  switch (storageType.toLowerCase()) {
+    case 'file':
+      return new FileStorage(dataDirectory);
+    case 'indexed':
+    default:
+      return new IndexedStorage(dataDirectory);
+  }
+}
 
 async function main() {
   // Initialize storage
-  const storage = new FileStorage(process.env.AGENT_HUB_DATA_DIR || '~/.agent-hub');
+  const storage = createStorage();
 
   await storage.init();
 
@@ -26,7 +40,7 @@ async function main() {
   });
 
   // Start server
-  const port = process.env.PORT || 3737;
+  const port = process.env.PORT ?? 3737;
 
   app.listen(port, () => {
     console.log(`🚀 Agent Hub MCP HTTP Server listening on port ${port}`);

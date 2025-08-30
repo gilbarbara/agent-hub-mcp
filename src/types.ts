@@ -21,7 +21,7 @@ export interface AgentRegistration {
   metadata?: Record<string, any>;
   projectPath: string;
   role: string;
-  status: 'active' | 'idle' | 'offline' | 'pending';
+  status: 'active' | 'idle' | 'offline';
 }
 
 export interface Message {

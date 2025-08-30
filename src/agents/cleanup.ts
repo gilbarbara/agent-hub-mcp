@@ -1,11 +1,11 @@
-import { FileStorage } from '../storage';
+import { StorageAdapter } from '~/storage';
 
 export class AgentStatusCleanup {
   private intervalId: NodeJS.Timeout | null = null;
   private readonly OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
   private readonly CLEANUP_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
-  constructor(private readonly storage: FileStorage) {}
+  constructor(private readonly storage: StorageAdapter) {}
 
   /**
    * Updates agent statuses based on lastSeen timestamps
