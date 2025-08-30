@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server } from '@modelcontextprotocol/sdk/server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { v7 as uuidv7 } from 'uuid';
 
-import { FileStorage } from './storage';
+import { detectProjectCapabilities } from './agents/detection';
+import { FileStorage, IndexedStorage, StorageAdapter } from './storage';
+import { TOOLS } from './tools/definitions';
 import {
   AgentRegistration,
   Message,
@@ -21,65 +18,44 @@ import {
   SharedContext,
   TaskStatus,
 } from './types';
+import { validateToolInput } from './validation';
 
-const storage = new FileStorage(process.env.AGENT_HUB_DATA_DIR || '~/.agent-hub');
+// Choose storage implementation based on environment variable
+function createStorage(): StorageAdapter {
+  const dataDirectory = process.env.AGENT_HUB_DATA_DIR ?? '~/.agent-hub';
+  const storageType = process.env.AGENT_HUB_STORAGE_TYPE ?? 'indexed';
+
+  switch (storageType.toLowerCase()) {
+    case 'file':
+      return new FileStorage(dataDirectory);
+    case 'indexed':
+    default:
+      return new IndexedStorage(dataDirectory);
+  }
+}
+
+const storage = createStorage();
 
 async function detectAgentFromProject(): Promise<AgentRegistration> {
   const projectPath = process.cwd();
 
   // Try to get project name from package.json
   let projectName = path.basename(projectPath);
-  let role = 'Development agent';
-  const capabilities: string[] = [];
 
   try {
+    const { readFile } = await import('fs/promises');
     const packageJsonPath = path.join(projectPath, 'package.json');
-    const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf-8'));
 
     if (packageJson.name) {
       projectName = packageJson.name;
-    }
-
-    // Detect capabilities from dependencies
-    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-
-    if (deps.react) {
-      capabilities.push('react', 'frontend');
-    }
-
-    if (deps.vue) {
-      capabilities.push('vue', 'frontend');
-    }
-
-    if (deps.express || deps.fastify) {
-      capabilities.push('api', 'backend');
-    }
-
-    if (deps.typescript) {
-      capabilities.push('typescript');
-    }
-
-    if (deps.jest || deps.vitest) {
-      capabilities.push('testing');
     }
   } catch {
     // Fallback if no package.json or read fails
   }
 
-  // Detect role based on project structure
-  try {
-    const files = await fs.readdir(projectPath);
-
-    if (files.includes('src') && files.includes('public')) {
-      role = 'Frontend development agent';
-    } else if (files.includes('src') && capabilities.includes('api')) {
-      role = 'Backend development agent';
-    } else if (files.includes('.agent-hub')) {
-      role = 'Agent hub coordinator';
-    }
-  } catch {
-    // Fallback
-  }
+  // Use shared detection logic from agents/detection.ts
+  const { capabilities, role } = await detectProjectCapabilities(projectPath);
 
   return {
     id: projectName,
@@ -144,165 +120,6 @@ const server = new Server(
   },
 );
 
-const TOOLS: Tool[] = [
-  {
-    name: 'send_message',
-    description: 'Send a message to another agent or broadcast to all agents',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        from: { type: 'string', description: 'Source agent identifier' },
-        to: { type: 'string', description: 'Target agent identifier or "all" for broadcast' },
-        type: {
-          type: 'string',
-          enum: Object.values(MessageType),
-          description: 'Message type',
-        },
-        content: { type: 'string', description: 'Message content' },
-        metadata: { type: 'object', description: 'Additional structured data' },
-        priority: {
-          type: 'string',
-          enum: Object.values(MessagePriority),
-          description: 'Message priority',
-          default: MessagePriority.NORMAL,
-        },
-        threadId: { type: 'string', description: 'Optional conversation thread ID' },
-      },
-      required: ['from', 'to', 'type', 'content'],
-    },
-  },
-  {
-    name: 'get_messages',
-    description: 'Retrieve messages for an agent',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agent: { type: 'string', description: 'Agent identifier to get messages for' },
-        markAsRead: {
-          type: 'boolean',
-          description: 'Mark retrieved messages as read',
-          default: true,
-        },
-        type: {
-          type: 'string',
-          enum: Object.values(MessageType),
-          description: 'Filter by message type',
-        },
-        since: { type: 'number', description: 'Get messages since timestamp' },
-      },
-      required: ['agent'],
-    },
-  },
-  {
-    name: 'set_context',
-    description: 'Store a value in the shared context',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Context key' },
-        value: { description: 'Context value (any JSON-serializable data)' },
-        agent: { type: 'string', description: 'Agent setting the context' },
-        ttl: { type: 'number', description: 'Time-to-live in milliseconds' },
-        namespace: { type: 'string', description: 'Optional namespace for organization' },
-      },
-      required: ['key', 'value', 'agent'],
-    },
-  },
-  {
-    name: 'get_context',
-    description: 'Retrieve values from the shared context',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Specific context key to retrieve' },
-        namespace: { type: 'string', description: 'Filter by namespace' },
-      },
-    },
-  },
-  {
-    name: 'register_agent',
-    description: 'Register an agent with the hub',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Agent identifier' },
-        projectPath: { type: 'string', description: 'Agent working directory' },
-        role: { type: 'string', description: 'Agent role description' },
-        capabilities: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Agent capabilities',
-        },
-        collaboratesWith: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Expected collaborators',
-        },
-      },
-      required: ['id', 'projectPath', 'role'],
-    },
-  },
-  {
-    name: 'update_task_status',
-    description: 'Update the status of a task',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agent: { type: 'string', description: 'Agent working on the task' },
-        task: { type: 'string', description: 'Task identifier or description' },
-        status: {
-          type: 'string',
-          enum: ['started', 'in-progress', 'completed', 'blocked'],
-          description: 'Task status',
-        },
-        details: { type: 'string', description: 'Additional details' },
-        dependencies: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Task dependencies',
-        },
-      },
-      required: ['agent', 'task', 'status'],
-    },
-  },
-  {
-    name: 'get_agent_status',
-    description: 'Get status of agents and their tasks',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agent: { type: 'string', description: 'Specific agent to query' },
-      },
-    },
-  },
-  {
-    name: 'start_collaboration',
-    description: 'Initialize collaboration for a feature',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        feature: { type: 'string', description: 'Feature name or identifier' },
-        agent: { type: 'string', description: 'Agent starting the collaboration' },
-      },
-      required: ['feature'],
-    },
-  },
-  {
-    name: 'sync_request',
-    description: 'Send a synchronous request to another agent and wait for response',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        from: { type: 'string', description: 'Requesting agent' },
-        to: { type: 'string', description: 'Target agent' },
-        topic: { type: 'string', description: 'Topic or question' },
-        timeout: { type: 'number', description: 'Timeout in milliseconds', default: 30000 },
-      },
-      required: ['from', 'to', 'topic'],
-    },
-  },
-];
-
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOLS,
 }));
@@ -322,22 +139,25 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
   }
 
   try {
+    // Validate tool input against schema
+    const validatedArguments = validateToolInput(name, arguments_);
+
     switch (name) {
       case 'send_message': {
         // Auto-register sender if needed
-        const fromAgent = await ensureAgentRegistered(arguments_.from as string);
+        const fromAgent = await ensureAgentRegistered(validatedArguments.from as string);
 
         const message: Message = {
           id: uuidv7(),
           from: fromAgent,
-          to: arguments_.to as string,
-          type: arguments_.type as MessageType,
-          content: arguments_.content as string,
-          metadata: arguments_.metadata as Record<string, any>,
+          to: validatedArguments.to as string,
+          type: validatedArguments.type as MessageType,
+          content: validatedArguments.content as string,
+          metadata: validatedArguments.metadata as Record<string, any>,
           timestamp: Date.now(),
           read: false,
-          threadId: arguments_.threadId as string,
-          priority: (arguments_.priority as MessagePriority) || MessagePriority.NORMAL,
+          threadId: validatedArguments.threadId as string,
+          priority: (validatedArguments.priority as MessagePriority) || MessagePriority.NORMAL,
         };
 
         await storage.saveMessage(message);
@@ -353,19 +173,19 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
       case 'get_messages': {
         // Auto-register requesting agent if needed
-        const agentId = await ensureAgentRegistered(arguments_.agent as string);
+        const agentId = await ensureAgentRegistered(validatedArguments.agent as string);
 
         const messages = await storage.getMessages({
           agent: agentId,
-          type: arguments_.type as string,
-          since: arguments_.since as number,
+          type: validatedArguments.type as string,
+          since: validatedArguments.since as number,
         });
 
         const unreadMessages = messages.filter(
           m => !m.read && (m.to === agentId || m.to === 'all'),
         );
 
-        if (arguments_.markAsRead !== false) {
+        if (validatedArguments.markAsRead !== false) {
           for (const message of unreadMessages) {
             await storage.markMessageAsRead(message.id);
           }
@@ -385,19 +205,19 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
       case 'set_context': {
         // Auto-register agent setting context if needed
-        const agentId = await ensureAgentRegistered(arguments_.agent as string);
+        const agentId = await ensureAgentRegistered(validatedArguments.agent as string);
 
-        const existingContexts = await storage.getContext(arguments_.key as string);
-        const existingContext = existingContexts[arguments_.key as string];
+        const existingContexts = await storage.getContext(validatedArguments.key as string);
+        const existingContext = existingContexts[validatedArguments.key as string];
 
         const context: SharedContext = {
-          key: arguments_.key as string,
-          value: arguments_.value,
+          key: validatedArguments.key as string,
+          value: validatedArguments.value,
           version: existingContext ? existingContext.version + 1 : 1,
           updatedBy: agentId,
           timestamp: Date.now(),
-          ttl: arguments_.ttl as number,
-          namespace: arguments_.namespace as string,
+          ttl: validatedArguments.ttl as number,
+          namespace: validatedArguments.namespace as string,
         };
 
         await storage.saveContext(context);
@@ -413,8 +233,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
       case 'get_context': {
         const contexts = await storage.getContext(
-          arguments_.key as string,
-          arguments_.namespace as string,
+          validatedArguments.key as string,
+          validatedArguments.namespace as string,
         );
 
         const result: Record<string, any> = {};
@@ -434,13 +254,13 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
       case 'register_agent': {
         const agent: AgentRegistration = {
-          id: arguments_.id as string,
-          projectPath: arguments_.projectPath as string,
-          role: arguments_.role as string,
-          capabilities: (arguments_.capabilities as string[]) || [],
+          id: validatedArguments.id as string,
+          projectPath: validatedArguments.projectPath as string,
+          role: validatedArguments.role as string,
+          capabilities: (validatedArguments.capabilities as string[]) ?? [],
           status: 'active',
           lastSeen: Date.now(),
-          collaboratesWith: (arguments_.collaboratesWith as string[]) || [],
+          collaboratesWith: (validatedArguments.collaboratesWith as string[]) ?? [],
         };
 
         await storage.saveAgent(agent);
@@ -457,11 +277,11 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case 'update_task_status': {
         const task: TaskStatus = {
           id: uuidv7(),
-          agent: arguments_.agent as string,
-          task: arguments_.task as string,
-          status: arguments_.status as 'started' | 'in-progress' | 'completed' | 'blocked',
-          details: arguments_.details as string,
-          dependencies: arguments_.dependencies as string[],
+          agent: validatedArguments.agent as string,
+          task: validatedArguments.task as string,
+          status: validatedArguments.status as 'started' | 'in-progress' | 'completed' | 'blocked',
+          details: validatedArguments.details as string,
+          dependencies: validatedArguments.dependencies as string[],
           timestamp: Date.now(),
         };
 
@@ -477,8 +297,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         };
       }
       case 'get_agent_status': {
-        const agents = await storage.getAgents(arguments_.agent as string);
-        const tasks = await storage.getTasks(arguments_.agent as string);
+        const agents = await storage.getAgents(validatedArguments.agent as string);
+        const tasks = await storage.getTasks(validatedArguments.agent as string);
 
         return {
           content: [
@@ -490,7 +310,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         };
       }
       case 'start_collaboration': {
-        const agentId = (arguments_.agent as string) || `agent-${Date.now()}`;
+        const agentId = (validatedArguments.agent as string) ?? `agent-${Date.now()}`;
         const agents = await storage.getAgents();
         const messages = await storage.getMessages({ agent: agentId });
 
@@ -516,10 +336,10 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case 'sync_request': {
         const syncMessage: Message = {
           id: uuidv7(),
-          from: arguments_.from as string,
-          to: arguments_.to as string,
+          from: validatedArguments.from as string,
+          to: validatedArguments.to as string,
           type: MessageType.SYNC_REQUEST,
-          content: arguments_.topic as string,
+          content: validatedArguments.topic as string,
           timestamp: Date.now(),
           read: false,
           priority: MessagePriority.URGENT,
@@ -527,7 +347,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
         await storage.saveMessage(syncMessage);
 
-        const timeout = (arguments_.timeout as number) || 30000;
+        const timeout = (validatedArguments.timeout as number) ?? 30000;
         const startTime = Date.now();
 
         while (Date.now() - startTime < timeout) {
@@ -536,12 +356,12 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
           });
 
           const responses = await storage.getMessages({
-            agent: arguments_.from as string,
+            agent: validatedArguments.from as string,
             since: syncMessage.timestamp,
           });
 
           const response = responses.find(
-            m => m.from === arguments_.to && m.threadId === syncMessage.id,
+            m => m.from === validatedArguments.to && m.threadId === syncMessage.id,
           );
 
           if (response) {

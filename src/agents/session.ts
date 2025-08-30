@@ -1,7 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
-import { AgentRegistration } from '../types';
+import { AgentRegistration } from '~/types';
 
 export interface AgentSession {
   agent: AgentRegistration | null;

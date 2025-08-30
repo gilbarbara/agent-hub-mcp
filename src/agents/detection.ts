@@ -1,5 +1,6 @@
-import { AgentRegistration } from '../types';
-import { validateProjectPath } from '../validation';
+import { validateProjectPath } from '~/validation';
+
+import { AgentRegistration } from '~/types';
 
 export async function createAgentFromProjectPath(
   agentId: string,

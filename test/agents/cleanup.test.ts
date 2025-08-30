@@ -4,9 +4,10 @@ import * as path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AgentStatusCleanup } from '../../src/agents/cleanup';
-import { FileStorage } from '../../src/storage';
-import { AgentRegistration } from '../../src/types';
+import { AgentStatusCleanup } from '~/agents/cleanup';
+import { FileStorage } from '~/storage';
+
+import { AgentRegistration } from '~/types';
 
 describe('AgentStatusCleanup', () => {
   let storage: FileStorage;

@@ -1,10 +1,11 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage';
-import { AgentRegistration, Message, MessagePriority, MessageType } from '../types';
+import { StorageAdapter } from '~/storage';
+
+import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
 
 export async function sendWelcomeMessage(
-  storage: FileStorage,
+  storage: StorageAdapter,
   newAgent: AgentRegistration,
 ): Promise<void> {
   try {
@@ -107,7 +108,7 @@ ${activeTasks.length > 0 ? `🚀 ${activeTasks.length} active task(s) in progres
 }
 
 export async function updateExistingAgent(
-  storage: FileStorage,
+  storage: StorageAdapter,
   agent: AgentRegistration,
 ): Promise<AgentRegistration> {
   // Check if agent already exists and update instead of duplicating
