@@ -1,4 +1,4 @@
-import { MessagePriority, MessageType } from './types';
+import { MessagePriority, MessageType } from '~/types';
 
 /**
  * Security validation utilities for input sanitization
@@ -12,13 +12,14 @@ export function validateContextValue(value: unknown): any {
     return value;
   }
 
-  // Prevent prototype pollution
+  // Prevent prototype pollution by checking for explicitly set dangerous properties
   if (typeof value === 'object') {
     const dangerous = ['__proto__', 'constructor', 'prototype'];
     const valueObject = value as any;
 
     for (const key of dangerous) {
-      if (key in valueObject) {
+      // Only reject if the property was explicitly set (not inherited)
+      if (Object.prototype.hasOwnProperty.call(valueObject, key)) {
         throw new Error('Context value contains dangerous properties');
       }
     }
