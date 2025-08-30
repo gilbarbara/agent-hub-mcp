@@ -2,17 +2,19 @@ import path from 'path';
 
 import { createId } from '@paralleldrive/cuid2';
 
-import { createAgentFromProjectPath } from '../agents/detection.js';
-import { sendWelcomeMessage } from '../agents/registration.js';
-import { AgentSession } from '../agents/session.js';
-import { createContextHandlers } from '../context/handlers.js';
-import { ContextService } from '../context/service.js';
-import { createMessageHandlers } from '../messaging/handlers.js';
-import { MessageService } from '../messaging/service.js';
-import { FileStorage } from '../storage.js';
-import { createTaskHandlers } from '../tasks/handlers.js';
-import { TaskService } from '../tasks/service.js';
-import { AgentRegistration } from '../types.js';
+import { createAgentFromProjectPath } from '~/agents/detection';
+import { sendWelcomeMessage } from '~/agents/registration';
+import { AgentSession } from '~/agents/session';
+import { createContextHandlers } from '~/context/handlers';
+import { ContextService } from '~/context/service';
+import { createMessageHandlers } from '~/messaging/handlers';
+import { MessageService } from '~/messaging/service';
+import { StorageAdapter } from '~/storage';
+import { createTaskHandlers } from '~/tasks/handlers';
+import { TaskService } from '~/tasks/service';
+import { validateToolInput } from '~/validation';
+
+import { AgentRegistration } from '~/types';
 
 export interface ToolHandlerServices {
   broadcastNotification: (method: string, params: any) => Promise<void>;
@@ -21,7 +23,7 @@ export interface ToolHandlerServices {
   messageService: MessageService;
   sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
-  storage: FileStorage;
+  storage: StorageAdapter;
   taskService: TaskService;
 }
 
@@ -37,22 +39,27 @@ export function createToolHandlers(services: ToolHandlerServices) {
 
   return {
     async send_message(arguments_: any) {
+      const validatedArguments = validateToolInput('send_message', arguments_);
+
       // Instant notification is now handled directly in the message handler
-      return messageHandlers.send_message(arguments_);
+      return messageHandlers.send_message(validatedArguments);
     },
 
     async get_messages(arguments_: any) {
-      return messageHandlers.get_messages(arguments_);
+      const validatedArguments = validateToolInput('get_messages', arguments_);
+
+      return messageHandlers.get_messages(validatedArguments);
     },
 
     async set_context(arguments_: any) {
-      const result = await contextHandlers.set_context(arguments_);
+      const validatedArguments = validateToolInput('set_context', arguments_);
+      const result = await contextHandlers.set_context(validatedArguments);
 
       // Broadcast context update notification
       // The notification service will convert this to MCP's sendResourceListChanged
       await services.broadcastNotification('context_updated', {
-        key: arguments_.key,
-        namespace: arguments_.namespace,
+        key: validatedArguments.key,
+        namespace: validatedArguments.namespace,
         version: result.version,
       });
 
@@ -60,27 +67,25 @@ export function createToolHandlers(services: ToolHandlerServices) {
     },
 
     async get_context(arguments_: any) {
-      return contextHandlers.get_context(arguments_);
+      const validatedArguments = validateToolInput('get_context', arguments_);
+
+      return contextHandlers.get_context(validatedArguments);
     },
 
     async register_agent(arguments_: any) {
+      const validatedArguments = validateToolInput('register_agent', arguments_);
       const currentSession = services.getCurrentSession();
       let agent: AgentRegistration;
 
-      // Validate required fields
-      if (!arguments_.projectPath || !arguments_.role) {
-        throw new Error('Missing required fields: projectPath and role are required');
-      }
-
-      const projectPath = arguments_.projectPath as string;
+      const projectPath = validatedArguments.projectPath as string;
 
       // Generate agent ID with suffix for uniqueness
       let agentId: string;
       const randomSuffix = createId().slice(0, 5);
 
-      if (arguments_.id) {
+      if (validatedArguments.id) {
         // User provided ID: helpers → helpers-x3k2m
-        const baseId = arguments_.id as string;
+        const baseId = validatedArguments.id as string;
 
         agentId = `${baseId}-${randomSuffix}`;
       } else {
@@ -97,24 +102,26 @@ export function createToolHandlers(services: ToolHandlerServices) {
         agent = await createAgentFromProjectPath(agentId, projectPath);
 
         // Merge with any provided capabilities
-        if (arguments_.capabilities) {
-          agent.capabilities = [...new Set([...agent.capabilities, ...arguments_.capabilities])];
+        if (validatedArguments.capabilities) {
+          agent.capabilities = [
+            ...new Set([...agent.capabilities, ...validatedArguments.capabilities]),
+          ];
         }
 
         // Use provided role if specified
-        if (arguments_.role) {
-          agent.role = arguments_.role as string;
+        if (validatedArguments.role) {
+          agent.role = validatedArguments.role as string;
         }
       } else {
         // Manual registration with provided info only
         agent = {
           id: agentId,
           projectPath,
-          role: arguments_.role as string,
-          capabilities: (arguments_.capabilities as string[]) || [],
+          role: validatedArguments.role as string,
+          capabilities: (validatedArguments.capabilities as string[]) ?? [],
           status: 'active',
           lastSeen: Date.now(),
-          collaboratesWith: (arguments_.collaboratesWith as string[]) || [],
+          collaboratesWith: (validatedArguments.collaboratesWith as string[]) ?? [],
         };
       }
 
@@ -145,113 +152,43 @@ export function createToolHandlers(services: ToolHandlerServices) {
     },
 
     async update_task_status(arguments_: any) {
-      const result = await taskHandlers.update_task_status(arguments_);
+      const validatedArguments = validateToolInput('update_task_status', arguments_);
+      const result = await taskHandlers.update_task_status(validatedArguments);
 
       // Broadcast task update notification
       // The notification service will convert this to MCP's sendResourceListChanged
       await services.broadcastNotification('task_updated', {
-        agent: arguments_.agent,
-        task: arguments_.task,
-        status: arguments_.status,
+        agent: validatedArguments.agent,
+        task: validatedArguments.task,
+        status: validatedArguments.status,
       });
 
       return result;
     },
 
     async get_agent_status(arguments_: any) {
-      return taskHandlers.get_agent_status(arguments_);
+      const validatedArguments = validateToolInput('get_agent_status', arguments_);
+
+      return taskHandlers.get_agent_status(validatedArguments);
     },
 
     async start_collaboration(arguments_: any) {
-      return taskHandlers.start_collaboration(arguments_);
+      const validatedArguments = validateToolInput('start_collaboration', arguments_);
+
+      return taskHandlers.start_collaboration(validatedArguments);
     },
 
     async sync_request(arguments_: any) {
-      const result = await messageHandlers.sync_request(arguments_);
+      const validatedArguments = validateToolInput('sync_request', arguments_);
+      const result = await messageHandlers.sync_request(validatedArguments);
 
       // Send instant notification for sync request
-      await services.sendNotificationToAgent(arguments_.to, 'sync_request', {
-        from: arguments_.from,
-        topic: arguments_.topic,
+      await services.sendNotificationToAgent(validatedArguments.to, 'sync_request', {
+        from: validatedArguments.from,
+        topic: validatedArguments.topic,
       });
 
       return result;
-    },
-
-    async approve_agent(arguments_: any) {
-      const { agentId, approve, reason } = arguments_;
-
-      // Get the pending agent
-      const agents = await services.storage.getAgents();
-      const pendingAgent = agents.find(a => a.id === agentId && a.status === 'pending');
-
-      if (!pendingAgent) {
-        throw new Error(`No pending agent found with ID: ${agentId}`);
-      }
-
-      if (approve) {
-        // Approve the agent
-        pendingAgent.status = 'active';
-        await services.storage.saveAgent(pendingAgent);
-
-        // Broadcast approval notification
-        await services.broadcastNotification('agent_approved', {
-          agent: pendingAgent,
-          approvedBy: services.getCurrentSession()?.agent?.id || 'hub-admin',
-        });
-
-        return {
-          approved: true,
-          agent: pendingAgent,
-          message: `✅ Agent ${agentId} has been approved and is now active`,
-        };
-      }
-
-      // Reject the agent - remove from storage
-      const allAgents = await services.storage.getAgents();
-      const filteredAgents = allAgents.filter(a => a.id !== agentId);
-
-      await services.storage.saveAllAgents(filteredAgents);
-
-      // Broadcast rejection notification
-      await services.broadcastNotification('agent_rejected', {
-        agentId,
-        reason: reason || 'No reason provided',
-      });
-
-      return {
-        approved: false,
-        message: `❌ Agent ${agentId} has been rejected`,
-        reason,
-      };
-    },
-
-    async set_approval_required(arguments_: any) {
-      const { enabled, trustedAgents } = arguments_;
-
-      // Store approval settings in context
-      await services.contextService.setContext(
-        'hub:settings:require_approval',
-        enabled,
-        services.getCurrentSession()?.agent?.id || 'hub-admin',
-        { namespace: 'system' },
-      );
-
-      if (trustedAgents && trustedAgents.length > 0) {
-        await services.contextService.setContext(
-          'hub:trusted_agents',
-          trustedAgents,
-          services.getCurrentSession()?.agent?.id || 'hub-admin',
-          { namespace: 'system' },
-        );
-      }
-
-      return {
-        success: true,
-        approvalRequired: enabled,
-        trustedAgents: trustedAgents || [],
-        message: `Approval requirement ${enabled ? 'enabled' : 'disabled'}`,
-      };
     },
   };
 }

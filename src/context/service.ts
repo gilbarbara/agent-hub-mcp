@@ -1,8 +1,9 @@
-import { FileStorage } from '../storage';
-import { SharedContext } from '../types';
+import { StorageAdapter } from '~/storage';
+
+import { SharedContext } from '~/types';
 
 export class ContextService {
-  constructor(private readonly storage: FileStorage) {}
+  constructor(private readonly storage: StorageAdapter) {}
 
   async setContext(
     key: string,
@@ -33,6 +34,11 @@ export class ContextService {
 
   async getContext(key?: string, namespace?: string): Promise<Record<string, any>> {
     const contexts = await this.storage.getContext(key, namespace);
+
+    if (!contexts) {
+      return {};
+    }
+
     const result: Record<string, any> = {};
 
     for (const [contextKey, context] of Object.entries(contexts)) {

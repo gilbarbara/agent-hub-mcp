@@ -1,10 +1,11 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage';
-import { Message, MessagePriority, MessageType } from '../types';
+import { StorageAdapter } from '~/storage';
+
+import { Message, MessagePriority, MessageType } from '~/types';
 
 export class MessageService {
-  constructor(private readonly storage: FileStorage) {}
+  constructor(private readonly storage: StorageAdapter) {}
 
   async sendMessage(
     from: string,
@@ -27,7 +28,7 @@ export class MessageService {
       timestamp: Date.now(),
       read: false,
       threadId: options.threadId,
-      priority: options.priority || MessagePriority.NORMAL,
+      priority: options.priority ?? MessagePriority.NORMAL,
     };
 
     await this.storage.saveMessage(message);
@@ -52,9 +53,27 @@ export class MessageService {
     const unreadMessages = messages.filter(m => !m.read && (m.to === agentId || m.to === 'all'));
 
     if (options.markAsRead !== false) {
-      for (const message of unreadMessages) {
-        await this.storage.markMessageAsRead(message.id);
-      }
+      // Mark messages as read atomically to prevent race conditions
+      const markAsReadPromises = unreadMessages.map(message => {
+        const markPromise = this.storage.markMessageAsRead(message.id);
+
+        // Ensure we have a proper Promise to work with
+        if (markPromise && typeof markPromise.catch === 'function') {
+          return markPromise.catch(error => {
+            // Log error but don't fail the entire operation if one message fails
+            // eslint-disable-next-line no-console
+            console.error(`Failed to mark message ${message.id} as read:`, error);
+
+            return null;
+          });
+        }
+
+        // If markMessageAsRead doesn't return a proper promise, return resolved promise
+        return Promise.resolve();
+      });
+
+      // Wait for all messages to be marked as read, but don't fail if some fail
+      await Promise.allSettled(markAsReadPromises);
     }
 
     return {

@@ -1,10 +1,11 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage';
-import { TaskStatus } from '../types';
+import { StorageAdapter } from '~/storage';
+
+import { TaskStatus } from '~/types';
 
 export class TaskService {
-  constructor(private readonly storage: FileStorage) {}
+  constructor(private readonly storage: StorageAdapter) {}
 
   async updateTaskStatus(
     agent: string,
@@ -34,7 +35,10 @@ export class TaskService {
     const agents = await this.storage.getAgents(agentId);
     const tasks = await this.storage.getTasks(agentId);
 
-    return { agents, tasks };
+    return {
+      agents: agents ?? [],
+      tasks: tasks ?? [],
+    };
   }
 
   async startCollaboration(
@@ -45,7 +49,7 @@ export class TaskService {
     agent: string;
     pendingMessages: number;
   }> {
-    const id = agentId || `agent-${Date.now()}`;
+    const id = agentId ?? `agent-${Date.now()}`;
     const agents = await this.storage.getAgents();
     const messages = await this.storage.getMessages({ agent: id });
 
