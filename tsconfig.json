@@ -12,5 +12,5 @@
     "types": ["vitest/globals"],
     "target": "ESNext"
   },
-  "include": ["globals.d.ts", "src/**/*"]
+  "include": ["globals.d.ts", "src/**/*", "test/**/*"]
 }

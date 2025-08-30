@@ -1,7 +1,7 @@
 {
   "name": "agent-hub-mcp",
   "version": "0.1.0",
-  "description": "A Model Context Protocol (MCP) server that enables communication and coordination between multiple Claude Code agents working across different repositories in a multi-service architecture",
+  "description": "Universal AI agent coordination platform based on Model Context Protocol (MCP)",
   "author": "Gil Barbara <gilbarbara@gmail.com>",
   "keywords": [
     "mcp",
@@ -64,11 +64,10 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.4",
     "@paralleldrive/cuid2": "^2.2.2",
-    "@types/uuid": "^10.0.0",
+    "ajv": "^8.17.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.0.1",
-    "uuid": "^11.1.0"
+    "express-rate-limit": "^8.0.1"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
@@ -81,13 +80,12 @@
     "@vitest/coverage-v8": "^3.2.4",
     "del-cli": "^6.0.0",
     "husky": "^9.1.7",
-    "is-ci-cli": "^2.2.0",
     "jest-extended": "^6.0.0",
     "repo-tools": "^0.3.1",
-    "ts-node": "^10.9.2",
     "tsup": "^8.5.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "scripts": {
@@ -101,7 +99,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
-    "lint": "eslint --fix src",
+    "lint": "eslint --fix src test",
     "typecheck": "tsc",
     "typevalidation": "attw -P",
     "format": "prettier \"**/*.{css,graphql,js,json,jsx,less,md,mdx,scss,ts,tsx,yaml,yml}\" --write",
