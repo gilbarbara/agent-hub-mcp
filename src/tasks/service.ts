@@ -1,7 +1,7 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage.js';
-import { TaskStatus } from '../types.js';
+import { FileStorage } from '../storage';
+import { TaskStatus } from '../types';
 
 export class TaskService {
   constructor(private readonly storage: FileStorage) {}

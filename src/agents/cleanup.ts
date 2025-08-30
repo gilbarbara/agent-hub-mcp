@@ -1,4 +1,4 @@
-import { FileStorage } from '../storage.js';
+import { FileStorage } from '../storage';
 
 export class AgentStatusCleanup {
   private intervalId: NodeJS.Timeout | null = null;

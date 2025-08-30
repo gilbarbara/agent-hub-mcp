@@ -1,13 +1,13 @@
-import { FileStorage } from '../storage.js';
+import { FileStorage } from '../storage';
 import {
   validateIdentifier,
   validateMessagePriority,
   validateMessageType,
   validateMetadata,
   validateString,
-} from '../validation.js';
+} from '../validation';
 
-import { MessageService } from './service.js';
+import { MessageService } from './service';
 
 export function createMessageHandlers(
   messageService: MessageService,

@@ -1,4 +1,4 @@
-import { TaskService } from './service.js';
+import { TaskService } from './service';
 
 export function createTaskHandlers(taskService: TaskService) {
   return {

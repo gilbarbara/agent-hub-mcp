@@ -7,13 +7,13 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { AgentSession } from '../agents/session.js';
-import { ContextService } from '../context/service.js';
-import { MessageService } from '../messaging/service.js';
-import { FileStorage } from '../storage.js';
-import { TaskService } from '../tasks/service.js';
-import { TOOLS } from '../tools/definitions.js';
-import { createToolHandlers, ToolHandlerServices } from '../tools/handlers.js';
+import { AgentSession } from '../agents/session';
+import { ContextService } from '../context/service';
+import { MessageService } from '../messaging/service';
+import { FileStorage } from '../storage';
+import { TaskService } from '../tasks/service';
+import { TOOLS } from '../tools/definitions';
+import { createToolHandlers, ToolHandlerServices } from '../tools/handlers';
 
 export interface McpServerDependencies {
   broadcastNotification: (method: string, params: any) => Promise<void>;
