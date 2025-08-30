@@ -1,5 +1,5 @@
-import { FileStorage } from '../storage.js';
-import { SharedContext } from '../types.js';
+import { FileStorage } from '../storage';
+import { SharedContext } from '../types';
 
 export class ContextService {
   constructor(private readonly storage: FileStorage) {}

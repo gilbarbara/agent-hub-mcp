@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
-import { AgentSession } from '../agents/session.js';
+import { AgentSession } from '../agents/session';
 
 /**
  * Service for managing notifications via MCP's built-in notification system

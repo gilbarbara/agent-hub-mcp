@@ -1,7 +1,7 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage.js';
-import { AgentRegistration, Message, MessagePriority, MessageType } from '../types.js';
+import { FileStorage } from '../storage';
+import { AgentRegistration, Message, MessagePriority, MessageType } from '../types';
 
 export async function sendWelcomeMessage(
   storage: FileStorage,

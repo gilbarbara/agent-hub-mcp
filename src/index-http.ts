@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 
-import { ContextService } from './context/service.js';
-import { MessageService } from './messaging/service.js';
-import { createHttpServer } from './servers/http.js';
-import { FileStorage } from './storage.js';
-import { TaskService } from './tasks/service.js';
+import { ContextService } from './context/service';
+import { MessageService } from './messaging/service';
+import { createHttpServer } from './servers/http';
+import { FileStorage } from './storage';
+import { TaskService } from './tasks/service';
 
 async function main() {
   // Initialize storage

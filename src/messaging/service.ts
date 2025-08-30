@@ -1,7 +1,7 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { FileStorage } from '../storage.js';
-import { Message, MessagePriority, MessageType } from '../types.js';
+import { FileStorage } from '../storage';
+import { Message, MessagePriority, MessageType } from '../types';
 
 export class MessageService {
   constructor(private readonly storage: FileStorage) {}

@@ -5,15 +5,15 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import rateLimit from 'express-rate-limit';
 
-import { AgentStatusCleanup } from '../agents/cleanup.js';
-import { AgentSession, SessionManager } from '../agents/session.js';
-import { ContextService } from '../context/service.js';
-import { MessageService } from '../messaging/service.js';
-import { FileStorage } from '../storage.js';
-import { TaskService } from '../tasks/service.js';
+import { AgentStatusCleanup } from '../agents/cleanup';
+import { AgentSession, SessionManager } from '../agents/session';
+import { ContextService } from '../context/service';
+import { MessageService } from '../messaging/service';
+import { FileStorage } from '../storage';
+import { TaskService } from '../tasks/service';
 
-import { createMcpServer } from './mcp.js';
-import { NotificationService } from './notifications.js';
+import { createMcpServer } from './mcp';
+import { NotificationService } from './notifications';
 
 export interface HttpServerDependencies {
   contextService: ContextService;
