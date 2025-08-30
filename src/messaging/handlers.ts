@@ -1,17 +1,17 @@
-import { FileStorage } from '../storage';
+import { StorageAdapter } from '~/storage';
 import {
   validateIdentifier,
   validateMessagePriority,
   validateMessageType,
   validateMetadata,
   validateString,
-} from '../validation';
+} from '~/validation';
 
 import { MessageService } from './service';
 
 export function createMessageHandlers(
   messageService: MessageService,
-  storage: FileStorage,
+  storage: StorageAdapter,
   sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>,
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>,
 ) {

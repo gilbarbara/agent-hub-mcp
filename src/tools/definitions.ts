@@ -1,6 +1,6 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
-import { MessagePriority, MessageType } from '../types';
+import { MessagePriority, MessageType } from '~/types';
 
 export const TOOLS: Tool[] = [
   {
@@ -79,7 +79,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: 'register_agent',
-    description: 'Register an agent with the hub (may require approval)',
+    description: 'Register an agent with the hub',
     inputSchema: {
       type: 'object',
       properties: {
@@ -94,48 +94,16 @@ export const TOOLS: Tool[] = [
           type: 'array',
           items: { type: 'string' },
           description: 'Agent capabilities',
+          default: [],
         },
         collaboratesWith: {
           type: 'array',
           items: { type: 'string' },
           description: 'Expected collaborators',
+          default: [],
         },
       },
       required: ['projectPath', 'role'],
-    },
-  },
-  {
-    name: 'approve_agent',
-    description: 'Approve or reject a pending agent registration',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agentId: { type: 'string', description: 'ID of the agent to approve/reject' },
-        approve: { type: 'boolean', description: 'Whether to approve (true) or reject (false)' },
-        restrictions: {
-          type: 'string',
-          enum: ['full', 'read-only', 'limited'],
-          description: 'Access level for approved agent (default: full)',
-        },
-        reason: { type: 'string', description: 'Optional reason for the decision' },
-      },
-      required: ['agentId', 'approve'],
-    },
-  },
-  {
-    name: 'set_approval_required',
-    description: 'Configure whether new agents require approval to join',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        enabled: { type: 'boolean', description: 'Enable or disable approval requirement' },
-        trustedAgents: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of agent IDs that do not require approval',
-        },
-      },
-      required: ['enabled'],
     },
   },
   {
@@ -156,6 +124,7 @@ export const TOOLS: Tool[] = [
           type: 'array',
           items: { type: 'string' },
           description: 'Task dependencies',
+          default: [],
         },
       },
       required: ['agent', 'task', 'status'],

@@ -1,12 +1,16 @@
-import { validateContextValue, validateIdentifier } from '../validation.js';
+import { validateContextValue, validateIdentifier, validateString } from '~/validation';
 
-import { ContextService } from './service.js';
+import { ContextService } from './service';
 
 export function createContextHandlers(contextService: ContextService) {
   return {
     async set_context(arguments_: any) {
-      // Validate inputs
-      const key = validateIdentifier(arguments_.key, 'key');
+      // Validate inputs - allow colons in context keys for namespacing
+      const key = validateString(arguments_.key, 'key', {
+        required: true,
+        maxLength: 200,
+        pattern: /^[\w:-]+$/,
+      });
       const value = validateContextValue(arguments_.value);
       const agent = validateIdentifier(arguments_.agent, 'agent');
       const namespace = arguments_.namespace
@@ -27,8 +31,14 @@ export function createContextHandlers(contextService: ContextService) {
     },
 
     async get_context(arguments_: any) {
-      // Validate inputs
-      const key = arguments_.key ? validateIdentifier(arguments_.key, 'key') : undefined;
+      // Validate inputs - allow colons in context keys for namespacing
+      const key = arguments_.key
+        ? validateString(arguments_.key, 'key', {
+            required: false,
+            maxLength: 200,
+            pattern: /^[\w:-]+$/,
+          })
+        : undefined;
       const namespace = arguments_.namespace
         ? validateIdentifier(arguments_.namespace, 'namespace')
         : undefined;
