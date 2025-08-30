@@ -3,7 +3,8 @@ import * as path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FileStorage } from '../src/storage';
+import { FileStorage } from '~/storage/file-storage';
+
 import {
   AgentRegistration,
   Message,
@@ -11,7 +12,7 @@ import {
   MessageType,
   SharedContext,
   TaskStatus,
-} from '../src/types';
+} from '~/types';
 
 vi.mock('fs/promises');
 
