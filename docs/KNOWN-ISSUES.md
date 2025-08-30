@@ -1,28 +1,49 @@
 # Known Issues and Limitations
 
-## Last Updated: December 2024
+## Last Updated: August 2025
 
 This document tracks known issues, limitations, and workarounds for the Agent Hub MCP.
+
+## Severity Levels
+
+- **🔴 Critical**: Blocks core functionality, no viable workaround
+- **🟠 Major**: Significant impact, workaround available but complex  
+- **🟡 Minor**: Low impact, easy workaround available
+- **✅ Fixed**: Issue resolved in current version
 
 ## Claude Code Integration Issues
 
 ### 1. MCP Notifications Not Properly Handled
 
 #### resources/list_changed
-- **Status**: 🔴 Not Working
-- **Issue**: Claude Code receives the notification but doesn't refresh its internal resource list
+- **Severity**: 🟡 Minor
+- **Status**: Not Working
+- **Issue**: Claude Code receives MCP notifications but ignores them completely
+- **Root Cause**: Claude Code uses pull-only model, doesn't process push notifications
 - **Impact**: New resources added dynamically are not visible in Claude Code
 - **Workaround**: Restart Claude Code to force refresh of resources
 - **Tracking**: [Issue to be filed with Anthropic]
 
 #### tools/list_changed
-- **Status**: 🟡 Partially Working
+- **Severity**: 🟡 Minor
+- **Status**: Partially Working
 - **Issue**: Similar to resources, tool list updates may not be reflected
 - **Workaround**: Restart Claude Code
 
-### 2. Schema Caching Issues
+### 2. Claude Code Pull-Only Architecture
 
-- **Status**: 🟡 Workaround Available
+- **Severity**: 🟠 Major
+- **Status**: Fundamental Limitation
+- **Issue**: Claude Code never automatically receives messages from MCP servers
+- **Root Cause**: Request/response architecture - agents must manually query for messages
+- **Impact**: No automatic message notifications, collaborative workflows require manual checking
+- **Workaround**: Use external notifications (webhooks, terminal alerts) to prompt manual checking
+- **Note**: This is architectural design, not a bug
+
+### 3. Schema Caching Issues
+
+- **Severity**: 🟡 Minor
+- **Status**: Workaround Available
 - **Issue**: Claude Code aggressively caches MCP tool schemas
 - **Impact**: Schema changes (like making fields optional) are not recognized
 - **Example**: Changing `id` from required to optional in `register_agent` tool
@@ -32,9 +53,10 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
   3. Start Claude Code fresh
 - **Note**: Simply reloading the configuration is not sufficient
 
-### 3. Optional Parameter Validation
+### 4. Optional Parameter Validation
 
-- **Status**: 🟡 Workaround Available
+- **Severity**: 🟡 Minor
+- **Status**: Workaround Available
 - **Issue**: Claude Code's client-side validation may enforce "required" on optional fields
 - **Impact**: Tools with optional parameters may fail validation
 - **Workaround**: Always provide all parameters, even optional ones
@@ -58,14 +80,16 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
 
 ### 1. SSE Streaming Implementation
 
-- **Status**: 🟡 Framework Only
+- **Severity**: 🟡 Minor
+- **Status**: Framework Only
 - **Issue**: SSE implementation is notification framework only, not true streaming
 - **Impact**: Automatic updates require polling or manual refresh
 - **Future**: Full SSE streaming implementation planned
 
 ### 2. Session Management
 
-- **Status**: ✅ Fixed (December 2024)
+- **Severity**: ✅ Fixed
+- **Status**: Fixed (August 2025)
 - **Previous Issue**: Temporary session files were created and never cleaned up
 - **Solution**: Implemented single-step registration with project-based IDs
 - **Current Behavior**: 
@@ -73,32 +97,12 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
   - No temporary files created
   - Project-based ID generation: `project-name-randomSuffix`
 
-## TypeScript Issues (December 2024)
-
-### 1. All Major Issues Resolved ✅
-
-- **Status**: ✅ **COMPLETED**
-- **Previous Issues**: 
-  - `src/sse-server.ts` - **REMOVED** (10 errors eliminated)
-  - `src/agents/elicitation.ts` - **REMOVED** 
-  - `src/notifications/bridge.ts` - **REMOVED**
-  - `src/notifications/webhook.ts` - **REMOVED**
-  - `src/notifications/preferences.ts` - **REMOVED**
-- **Current Status**: **0 TypeScript errors** in production code
-- **Impact**: Full type safety achieved
-
 ## Feature Limitations
 
-### 1. Authentication
+### 1. Persistence Limitations
 
-- **Status**: 🔴 Not Implemented
-- **Impact**: No security for multi-user environments
-- **Workaround**: Run on localhost only
-- **Future**: OAuth/API key support planned
-
-### 2. Persistence Limitations
-
-- **Status**: 🟡 Basic Implementation
+- **Severity**: 🟠 Major
+- **Status**: Basic Implementation
 - **Current**: File-based storage in `.agent-hub` directory
 - **Limitations**: 
   - No database support
@@ -106,19 +110,11 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
   - Potential race conditions under heavy load
 - **Future**: PostgreSQL/SQLite support planned
 
-### 3. Scalability
-
-- **Status**: 🟡 Single Instance Only
-- **Limitations**:
-  - No clustering support
-  - No load balancing
-  - Memory-based session storage
-- **Recommended Max**: 10-20 concurrent agents
-
 ## Workaround Summary
 
 | Issue | Quick Workaround |
 |-------|------------------|
+| No automatic message delivery | Use external notifications + manual checking |
 | Resources not updating | Restart Claude Code |
 | Schema changes not recognized | Full restart + rebuild |
 | Optional parameters failing | Provide all parameters |
@@ -130,7 +126,7 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
 
 To report new issues:
 1. Check this document first
-2. File issue at: https://github.com/[your-repo]/agent-hub-mcp/issues
+2. File issue at: https://github.com/gilbarbara/agent-hub-mcp/issues
 3. Include:
    - Claude Code version
    - Agent Hub MCP version
@@ -146,12 +142,9 @@ To report new issues:
 
 ## Planned Fixes
 
-### Q1 2025
 - [ ] Full SSE streaming implementation
 - [ ] Better notification handling
 - [ ] Schema hot-reload support
-
-### Q2 2025
 - [ ] Authentication system
 - [ ] Database persistence
 - [ ] Clustering support
