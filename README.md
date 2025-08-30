@@ -4,15 +4,15 @@
 
 **Universal AI agent coordination platform** - Enable any MCP-compatible AI assistant to collaborate across projects and share knowledge seamlessly.
 
-## Why Agent Hub?
+## Why Agent Hub MCP?
 
 **The Problem**: AI coding assistants work in isolation. Your Claude Code agent can't share insights with your Cursor agent. Knowledge remains trapped in individual sessions, and agents struggle to coordinate on complex, multi-service projects.
 
-**The Solution**: Agent Hub creates a universal coordination layer that enables any MCP-compatible AI agent to communicate, share context, and collaborate—regardless of the underlying AI platform or project location.
+**The Solution**: Agent Hub MCP creates a universal coordination layer that enables any MCP-compatible AI agent to communicate, share context, and collaborate—regardless of the underlying AI platform or project location.
 
 ```
 ┌─────────────┐    ┌─────────────────┐    ┌─────────────┐
-│ Claude Code │───▶│   Agent Hub     │◀───│   Qwen      │
+│ Claude Code │───▶│ Agent Hub MCP   │◀───│   Qwen      │
 │  (Frontend) │    │     (MCP)       │    │ (Backend)   │
 └─────────────┘    └─────────────────┘    └─────────────┘
                            ▲
@@ -27,14 +27,81 @@
 
 - 🤖 **Universal Compatibility**: Works with ANY MCP-compatible AI agent - no vendor lock-in
 - ⚡ **Minimal setup**: One-line configuration, no complex installation required  
-- 🔄 **Real-time Collaboration**: Agents communicate across different platforms and projects
+- 🔄 **Multi-Agent Collaboration**: Agents communicate across different platforms and projects
 - 🧠 **Shared Intelligence**: Knowledge and context flows between agents automatically
 - 📋 **Smart Coordination**: Agents track dependencies and coordinate complex multi-service tasks
 - 💾 **Persistent Memory**: All collaboration history preserved across sessions
 
+## Quick Start (5 minutes)
+
+### Step 1: Add Agent Hub MCP to Your AI Assistant
+
+For **Claude Code**, **Qwen**, **Gemini** (JSON config):
+```json
+{
+  "mcpServers": {
+    "agent-hub": {
+      "command": "npx",
+      "args": ["-y", "agent-hub-mcp@latest"]
+    }
+  }
+}
+```
+
+For **Codex** (TOML config):
+```toml
+[mcp_servers.agent-hub]
+command = "npx"
+args = ["-y", "agent-hub-mcp@latest"]
+```
+
+### Step 2: Install Custom Commands (Recommended)
+
+Custom commands make collaboration much easier. Install them for your AI assistant:
+
+**For Claude Code:**
+```bash
+git clone https://github.com/gilbarbara/agent-hub-mcp.git /tmp/agent-hub-mcp
+mkdir -p ~/.claude/commands/hub
+cp /tmp/agent-hub-mcp/commands/markdown/*.md ~/.claude/commands/hub/
+```
+
+**For Qwen/Gemini:**
+```bash
+git clone https://github.com/gilbarbara/agent-hub-mcp.git /tmp/agent-hub-mcp
+mkdir -p ~/.qwen/commands/hub  # or ~/.gemini/commands/hub
+cp /tmp/agent-hub-mcp/commands/toml/*.toml ~/.qwen/commands/hub/
+```
+
+This enables slash commands like `/hub:register`, `/hub:sync`, and `/hub:status` for seamless interaction.
+
+### Step 3: Restart Your AI Assistant
+Close and reopen your AI assistant completely for changes to take effect.
+
+### Step 4: Verify Installation
+
+**With Custom Commands:**
+```bash
+/hub:status
+```
+You should see: `📊 Hub Status Overview` with your agent listed
+
+**Without Custom Commands:**
+Ask your AI assistant: "Check the Hub status"
+Expected response: Confirmation that Agent Hub MCP is connected and running
+
+**Troubleshooting Verification:**
+- ❌ No response → Check MCP server configuration and restart AI assistant
+- ❌ Connection error → Verify `npx -y agent-hub-mcp@latest` command
+- ❌ Commands not found → Ensure custom commands are installed in correct directory
+
+✅ **Success!** You should see Agent Hub MCP status information. You're ready to collaborate!
+
+
+
 ## 🤖 Works With Any MCP-Compatible AI Agent
 
-Agent Hub uses the Model Context Protocol (MCP) standard, making it compatible with any AI assistant that supports MCP:
+Agent Hub MCP uses the Model Context Protocol (MCP) standard, making it compatible with any AI assistant that supports MCP:
 
 ### ✅ **Verified Compatible (manually tested)**
 - **Claude Code** - Primary platform, thoroughly tested
@@ -50,77 +117,7 @@ Agent Hub uses the Model Context Protocol (MCP) standard, making it compatible w
 ### 🧪 **Help Us Test**
 Using a different AI assistant? We'd love to verify compatibility! Open an issue with your platform details.
 
-**The key is that if your AI assistant supports MCP (Model Context Protocol), it can join the Agent Hub network.**
-
-## Setup
-
-### For Claude Code, Gemini, Qwen (JSON format)
-
-Add this to your AI agent's MCP server configuration:
-
-```json
-{
-  "mcpServers": {
-    "agent-hub": {
-      "command": "npx",
-      "args": ["-y", "agent-hub-mcp@latest"]
-    }
-  }
-}
-```
-
-### For Codex (TOML format)
-
-Add this to your Codex MCP configuration:
-
-```toml
-[mcp_servers.agent-hub]
-command = "npx"
-args = ["-y", "agent-hub-mcp"]
-```
-
-### For Continue.dev and Other MCP Clients
-
-If your AI assistant supports MCP, add the Agent Hub server to your MCP configuration:
-
-**Server Command**: `npx -y agent-hub-mcp@latest`  
-**Protocol**: Standard MCP over stdio  
-**Data Directory**: `~/.agent-hub` (customizable via `AGENT_HUB_DATA_DIR`)
-
-Refer to your AI assistant's documentation for detailed MCP server configuration instructions.
-
-> By default, data is stored in `~/.agent-hub`. To customize the storage location, add an `env` section with your **AGENT_HUB_DATA_DIR**
-
-### Custom Commands
-
-Install hub commands in your AI CLI for a better collaborative experience.
-
-> This is separate from the MCP server setup above.
-
-#### For Claude Code (Markdown format)
-Copy markdown command files to your Claude Code commands directory:
-
-```bash
-mkdir -p ~/.claude/commands/hub
-cp commands/markdown/*.md ~/.claude/commands/hub/
-```
-
-#### For Qwen, Gemini (TOML format) 
-Copy TOML command files to your AI CLI commands directory:
-
-```bash
-# For Qwen
-mkdir -p ~/.qwen/commands/hub
-cp commands/toml/*.toml ~/.qwen/commands/hub/
-
-# For Gemini
-mkdir -p ~/.gemini/commands/hub  
-cp commands/toml/*.toml ~/.gemini/commands/hub/
-
-# For project-specific commands, use .qwen/commands/hub or .gemini/commands/hub
-```
-
-This enables slash commands, such as `/hub:register-agent` and `/hub:send-message`, etc.
+**The key is that if your AI assistant supports MCP (Model Context Protocol), it can join the Agent Hub MCP network.**
 
 ## Usage
 
@@ -131,20 +128,26 @@ Here's a practical example showing frontend and backend agents collaborating on 
 ### 1. **Agent Registration**
 ```bash
 # In your frontend project (React/Next.js)
-/hub:register-agent
-# Registers as "frontend-x1k9" with capabilities: ["ui-components", "forms", "state-management"]
+/hub:register
+# Registers as "frontend" with capabilities: ["ui-components", "forms", "state-management"]
 
 # In your backend project (Node.js/Express)
-/hub:register-agent  
-# Registers as "backend-m8j2" with capabilities: ["api-design", "database", "validation"]
+/hub:register  
+# Registers as "backend" with capabilities: ["api-design", "database", "validation"]
 ```
+
+**Agent Identity & Persistence:**
+- Agents maintain consistent IDs across restarts (no random suffixes)
+- Project path determines agent identity - same path reconnects to existing agent
+- Agent ID conflicts are prevented - can't use existing ID with different project path
+- All messages and context are preserved when agents reconnect
 
 ### 2. **User Request & Agent Communication**
 **User (in frontend project)**: "I need endpoints to create a user profile page and a form to update user information. Can you coordinate with the backend to get the requirements?"
 
 **Frontend agent**: 
 ```bash
-# Agent automatically sends message to backend
+# Agent automatically coordinates with backend
 "Hi backend agent! Working on user profile features. Need:
 - GET endpoint for user profile data
 - PUT endpoint for profile updates  
@@ -153,7 +156,7 @@ Here's a practical example showing frontend and backend agents collaborating on 
 ```
 
 ### 3. **Backend Response**
-**Backend agent** (after checking messages):
+**Backend agent** (after syncing with hub):
 ```bash
 # Provides complete API specification
 "Here's the user profile API design:
@@ -221,148 +224,168 @@ Ready to implement. Need any specific requirements?"
 - `question` - Request information
 - `completion` - Report task completion
 - `error` - Report errors
-- `sync_request` - Synchronous request/response
 
-### Shared Context
+### Feature Collaboration
 
-Key-value store for cross-agent state:
-- Versioning for conflict resolution
-- TTL support for temporary data
-- Namespace organization
+Structured multi-agent coordination:
+- Feature-based project organization
+- Task delegation to domain experts
+- Progress tracking through subtasks
+- Context sharing within feature boundaries
 
 ## Available MCP Tools
 
 | Tool | Description |
 |------|-------------|
+| `register_agent` | Register/reconnect an agent |
 | `send_message` | Send messages between agents |
 | `get_messages` | Retrieve agent messages |
-| `set_context` | Store shared state |
-| `get_context` | Retrieve shared state |
-| `register_agent` | Register an agent |
-| `update_task_status` | Update task progress |
-| `get_agent_status` | Check agent status |
-| `start_collaboration` | Initialize feature work |
-| `sync_request` | Synchronous communication |
+| `get_hub_status` | Get hub activity overview |
+| `create_feature` | Start multi-agent projects |
+| `create_task` | Break features into delegated work |
+| `create_subtask` | Track implementation steps |
+| `accept_delegation` | Accept assigned work |
+| `update_subtask` | Report progress |
+| `get_agent_workload` | View all work assigned to agent |
+| `get_features` | List features with filtering |
+| `get_feature` | Get complete feature data |
 
-## Known Issues
+## 🚀 How Multi-Agent Collaboration Works
 
-⚠️ See [KNOWN-ISSUES.md](./docs/KNOWN-ISSUES.md) for current limitations
+Agent Hub MCP uses a **feature-based collaboration system** that mirrors real development workflows:
 
-Key issues:
-- `resources/list_changed` notifications not handled by Claude Code
-- Schema caching requires full restart for changes
-- Optional parameters may still be required by client validation
-
-## Alternative Setups
-
-### Local Development
-
-For development or when you need to modify the code:
+### 1. **Feature Creation**
+Create multi-agent projects that span different repositories and technologies:
 
 ```bash
-git clone https://github.com/gilbarbara/agent-hub-mcp.git
-cd agent-hub-mcp
-pnpm install
-pnpm build
+# Coordinator agent creates a new feature
+create_feature({
+  "name": "user-authentication", 
+  "title": "Add User Authentication System",
+  "description": "Implement login, signup, and session management across frontend and backend",
+  "priority": "high",
+  "estimatedAgents": ["backend-agent", "frontend-agent"]
+})
 ```
 
-Configure Claude Code to use local version:
+### 2. **Task Delegation**
+Break features into specific tasks assigned to domain experts:
+
+```bash
+create_task({
+  "featureId": "user-authentication",
+  "title": "Implement authentication API",
+  "delegations": [
+    { "agent": "backend-agent", "scope": "Create JWT auth endpoints and middleware" },
+    { "agent": "frontend-agent", "scope": "Build login/signup forms and session management" }
+  ]
+})
+```
+
+### 3. **Intelligent Work Distribution**
+Agents see ALL their work across features and make smart priority decisions:
+
+```bash
+# Backend agent connects and sees:
+get_agent_workload("backend-agent")
+# Returns:
+{
+  "activeFeatures": [
+    {
+      "feature": { "title": "User Authentication", "priority": "high" },
+      "myDelegations": [{ "scope": "Create JWT auth endpoints", "status": "pending" }]
+    },
+    {
+      "feature": { "title": "Performance Optimization", "priority": "critical" },
+      "myDelegations": [{ "scope": "Fix database queries", "status": "in-progress" }]
+    }
+  ]
+}
+```
+
+### 4. **Context Sharing & Coordination**
+Agents share implementation details within feature boundaries:
+
+```bash
+# Backend completes API contract
+update_subtask({
+  "featureId": "user-authentication",
+  "subtaskId": "auth-api-contract", 
+  "status": "completed",
+  "output": "JWT endpoints ready: POST /auth/login, POST /auth/signup, GET /auth/me"
+})
+
+# Frontend sees progress when checking feature data
+get_feature("user-authentication") 
+# Shows: subtask output with JWT endpoints info
+```
+
+### 5. **Automatic Coordination**
+Agents unblock each other by sharing progress and outputs in real-time. The system handles:
+- **Priority management**: Critical tasks get attention first
+- **Dependency tracking**: Agents know what they're waiting for
+- **Context isolation**: Each feature maintains its own scope
+- **Load balancing**: Work distributes naturally across available agents
+
+## Advanced Setup
+
+### Custom Data Directory
+
+To store Agent Hub MCP data in a custom location, add environment variables to your configuration:
+
 ```json
 {
   "mcpServers": {
     "agent-hub": {
-      "command": "node",
-      "args": ["/path/to/agent-hub-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "agent-hub-mcp@latest"],
+      "env": {
+        "AGENT_HUB_DATA_DIR": "/path/to/your/data"
+      }
     }
   }
 }
 ```
 
-### HTTP Transport
+### For Other MCP Clients
 
-For testing or special setups:
+If your AI assistant supports MCP, use these settings:
+- **Command**: `npx -y agent-hub-mcp@latest`  
+- **Protocol**: Standard MCP over stdio  
+- **Data Directory**: `~/.agent-hub` (or set `AGENT_HUB_DATA_DIR`)
 
-```bash
-# Run HTTP server (development)
-pnpm run dev
-```
+## Troubleshooting
 
-Configure with HTTP transport:
-```json
-{
-  "mcpServers": {
-    "agent-hub": {
-      "url": "http://localhost:3737/mcp"
-    }
-  }
-}
-```
+⚠️ Having issues? See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md)
 
-## Development
-
-### Commands
-
-```bash
-# Run tests
-pnpm test
-
-# Type checking
-pnpm run typecheck
-
-# Linting
-pnpm run lint
-
-# Build
-pnpm run build
-```
-
-### Project Structure
-
-```
-.agent-hub/           # Persistent storage
-├── agents/          # Agent registrations
-├── messages/        # Message history
-├── context/         # Shared context
-└── tasks/           # Task tracking
-
-src/
-├── agents/          # Agent management (detection, registration, sessions)
-├── context/         # Shared context service
-├── messaging/       # Message handling
-├── servers/         # HTTP/MCP servers
-├── tasks/           # Task coordination
-├── tools/           # MCP tool definitions
-├── storage.ts       # File-based persistence
-└── types.ts         # TypeScript types
-```
-
-### Storage
-
-All data persists to `.agent-hub` directory:
-- JSON file storage
-- Atomic writes
-- Automatic cleanup of old data
+Common issues:
+- MCP server not connecting → Restart AI assistant
+- Commands not recognized → Check custom commands installation
+- Agent ID conflicts → Use unique IDs per project
 
 ## Requirements
 
 - Node.js 22+
-- pnpm
+- An MCP-compatible AI assistant (Claude Code, Qwen, Gemini, etc.)
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3737` | HTTP server port |
 | `AGENT_HUB_DATA_DIR` | `~/.agent-hub` | Storage directory |
 
 ## Contributing
 
-1. Check [Known Issues](./docs/KNOWN-ISSUES.md) first
-2. File issues with reproduction steps
-3. Include Claude Code and hub versions
+See [Contributing Guide](./docs/CONTRIBUTING.md) for development setup and guidelines.
+
+## Documentation
+
+- [Contributing](./docs/CONTRIBUTING.md) - Development setup and guidelines
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Known Issues](./docs/KNOWN-ISSUES.md) - Current limitations
+- [System Overview](./docs/SYSTEM-OVERVIEW.md) - Architecture details
 
 ## License
 
 MIT
 
-See [CLAUDE.md](./CLAUDE.md#implementation-status) for detailed status.

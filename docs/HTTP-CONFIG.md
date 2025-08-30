@@ -49,10 +49,10 @@ Replace your stdio configuration with the HTTP URL:
 
 ## Features
 
-### ✨ Fast Communication
-- **Instant message delivery** - No more polling for messages
-- **Live notifications** - Agent join/leave, context updates, task changes  
-- **SSE streaming** - Server-Sent Events for instant updates
+### ✨ Message Storage & Retrieval
+- **Instant message storage** - Messages saved immediately on the server
+- **Manual synchronization** - Use sync to get messages, workload, and hub updates
+- **SSE transport available** - Server-Sent Events transport option (but Claude Code still requires manual sync)
 
 ### 🔄 Session Management
 - **Persistent connections** - Maintain state across requests
@@ -81,9 +81,9 @@ DELETE /mcp  # Terminate session
 | `PORT` | `3000` | HTTP server port |
 | `AGENT_HUB_DATA_DIR` | `.agent-hub` | Data storage directory |
 
-## Instant Notifications
+## Notifications (Limited by Claude Code)
 
-Agents automatically receive these notifications via SSE:
+The server sends these notifications via SSE, but Claude Code requires manual sync:
 
 - `agent_joined` - New agent connected
 - `agent_left` - Agent disconnected  
@@ -114,40 +114,47 @@ pnpm run dev
 
 Configure different Claude Code instances to use different transports.
 
-## Agent Registration (Updated December 2024)
+## Agent Registration (Updated September 2025)
 
-### Automatic Project-Based IDs
+### Clean Agent IDs & Persistence
 
-The hub now generates agent IDs automatically from the project path:
+The hub now provides persistent agent identities without random suffixes:
 
 ```javascript
-// Before: Manual ID required
+// Register with explicit ID
 register_agent({
   id: "my-agent",
   projectPath: "/Users/name/my-project",
   role: "Frontend Developer"
 })
 
-// After: ID auto-generated from project path
+// Or auto-generate from project path
 register_agent({
   projectPath: "/Users/name/my-project",
   role: "Frontend Developer"
 })
-// Generated ID: "my-project-x3k2m" (random suffix for uniqueness)
+// Generated ID: "my-project" (clean ID, no suffix)
 ```
 
-### Registration Flow
+### Registration Behavior
 
-1. **Session Initialization**: When Claude Code connects, a session is created with `agent: null`
-2. **Agent Registration**: The agent calls `register_agent` to identify itself
-3. **ID Generation**: If no ID provided, generates `projectName-randomSuffix`
-4. **Multi-Agent Support**: Random suffixes allow multiple agents per project
+1. **Clean IDs**: No random suffixes - agents get predictable IDs
+2. **Project Path Identity**: Agents uniquely identified by project path
+3. **Automatic Reconnection**: Same path reconnects to existing agent
+4. **ID Conflict Prevention**: Can't use existing ID with different project path
+
+### Registration Scenarios
+
+- **New Agent**: Fresh project path → Creates new agent
+- **Reconnection**: Same project path → "Welcome back" message, preserves data
+- **ID Conflict**: Existing ID + different path → Registration rejected
+- **Path Priority**: Different ID + same path → Reconnects by path
 
 ### Important Notes
 
-- No temporary session files are created during discovery
+- Agent data persists across Claude restarts
+- Messages and context preserved when reconnecting
 - Sessions without agents (`agent: null`) are normal until registration
-- Each project can have multiple agents with unique suffixes
 
 ## Known Issues & Workarounds
 
