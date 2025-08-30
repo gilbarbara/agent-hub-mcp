@@ -2,9 +2,15 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-import { AgentRegistration, Message, SharedContext, TaskStatus } from './types';
+import { AgentRegistration, Message, SharedContext, TaskStatus } from '~/types';
 
-export class FileStorage {
+import { StorageAdapter } from './types';
+
+/**
+ * File-based storage implementation for Agent Hub MCP.
+ * Provides persistent storage using JSON files with security validation.
+ */
+export class FileStorage implements StorageAdapter {
   private readonly dataDirectory: string;
 
   constructor(dataDirectory = '.agent-hub') {
@@ -36,8 +42,8 @@ export class FileStorage {
     // Remove any path traversal sequences and directory separators
     const sanitized = component.replace(/\.\./g, '').replace(/[/\\]/g, '').replace(/\0/g, ''); // Remove null bytes
 
-    // Only allow alphanumeric, dash, underscore, and dot (for extensions)
-    if (!/^[\w.-]+$/.test(sanitized)) {
+    // Only allow alphanumeric, dash, underscore, dot (for extensions), and colon (for namespacing)
+    if (!/^[\w.:-]+$/.test(sanitized)) {
       throw new Error(`Invalid characters in path component: ${component}`);
     }
 
@@ -90,6 +96,8 @@ export class FileStorage {
 
   async getMessages(filter?: {
     agent?: string;
+    limit?: number;
+    offset?: number;
     since?: number;
     type?: string;
   }): Promise<Message[]> {
@@ -97,26 +105,76 @@ export class FileStorage {
     const files = await fs.readdir(messagesDirectory);
     const messages: Message[] = [];
 
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const message = await this.readJsonFile<Message>(path.join(messagesDirectory, file));
+    // Try to sort files by modification time for better performance with recent messages
+    // If stat fails (e.g., in tests), fall back to filename order
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    let sortedFiles = jsonFiles;
 
-        if (message) {
-          if (filter) {
-            if (filter.agent && message.to !== filter.agent && message.to !== 'all') {
-              continue;
-            }
+    try {
+      const fileStats = await Promise.all(
+        jsonFiles.map(async file => {
+          try {
+            const stats = await fs.stat(path.join(messagesDirectory, file));
 
-            if (filter.type && message.type !== filter.type) {
-              continue;
-            }
+            return { file, stats };
+          } catch {
+            return { file, stats: null };
+          }
+        }),
+      );
 
-            if (filter.since && message.timestamp < filter.since) {
-              continue;
-            }
+      const validStats = fileStats.filter(item => item.stats);
+
+      if (validStats.length > 0) {
+        sortedFiles = validStats
+          .toSorted((a, b) => b.stats!.mtime.getTime() - a.stats!.mtime.getTime())
+          .map(item => item.file);
+      }
+    } catch {
+      // Fall back to original order if stat operations fail
+      sortedFiles = jsonFiles;
+    }
+
+    let matchingCount = 0;
+    const limit = filter?.limit;
+    const offset = filter?.offset || 0;
+
+    for (const file of sortedFiles) {
+      const message = await this.readJsonFile<Message>(path.join(messagesDirectory, file));
+
+      if (message) {
+        // Apply filters first
+        let passesFilters = true;
+
+        if (filter) {
+          if (filter.agent && message.to !== filter.agent && message.to !== 'all') {
+            passesFilters = false;
+          }
+
+          if (filter.type && message.type !== filter.type) {
+            passesFilters = false;
+          }
+
+          if (filter.since && message.timestamp < filter.since) {
+            passesFilters = false;
+          }
+        }
+
+        // If message passes filters, handle pagination
+        if (passesFilters) {
+          // Skip messages before offset
+          if (matchingCount < offset) {
+            matchingCount++;
+            continue;
           }
 
           messages.push(message);
+          matchingCount++;
+
+          // Stop if we've reached the limit
+          if (limit && messages.length >= limit) {
+            break;
+          }
         }
       }
     }
@@ -129,17 +187,26 @@ export class FileStorage {
     const filePath = path.join(this.dataDirectory, 'messages', `${safeId}.json`);
     const message = await this.readJsonFile<Message>(filePath);
 
-    return message || undefined;
+    return message ?? undefined;
   }
 
   async markMessageAsRead(messageId: string): Promise<void> {
     const safeId = this.validatePathComponent(messageId);
     const filePath = path.join(this.dataDirectory, 'messages', `${safeId}.json`);
-    const message = await this.readJsonFile<Message>(filePath);
 
-    if (message) {
-      message.read = true;
-      await this.writeJsonFile(filePath, message);
+    try {
+      const message = await this.readJsonFile<Message>(filePath);
+
+      if (message && !message.read) {
+        // Only update if message exists and is not already read (idempotent)
+        message.read = true;
+        await this.writeJsonFile(filePath, message);
+      }
+    } catch (error) {
+      // Re-throw with more context for debugging
+      throw new Error(
+        `Failed to mark message ${messageId} as read: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
