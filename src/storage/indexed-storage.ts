@@ -1,4 +1,14 @@
-import { AgentRegistration, Message, SharedContext, TaskStatus } from '~/types';
+import {
+  AgentWorkload,
+  Delegation,
+  Feature,
+  FeatureData,
+  FeatureFilters,
+  ParentTask,
+  Subtask,
+} from '~/features/types';
+
+import { AgentRegistration, Message } from '~/types';
 
 import { FileStorage } from './file-storage';
 import { CacheableStorageAdapter, CacheStats, IndexConfig } from './types';
@@ -29,15 +39,11 @@ export class IndexedStorage implements CacheableStorageAdapter {
 
   // In-memory caches
   private readonly messageCache = new Map<string, CacheEntry<Message>>();
-  private readonly contextCache = new Map<string, CacheEntry<SharedContext>>();
   private readonly agentCache = new Map<string, CacheEntry<AgentRegistration>>();
-  private readonly taskCache = new Map<string, CacheEntry<TaskStatus>>();
 
   // Indexes for fast filtering
   private readonly messagesByAgent: IndexMap<Message> = new Map();
   private readonly messagesByType: IndexMap<Message> = new Map();
-  private readonly contextsByNamespace: IndexMap<SharedContext> = new Map();
-  private readonly tasksByAgent: IndexMap<TaskStatus> = new Map();
 
   // Cache statistics
   private stats = {
@@ -85,25 +91,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
       for (const agent of agents) {
         this.cacheAgent(agent);
       }
-
-      // Load recent contexts (last 7 days)
-      const contexts = await this.fileStorage.getContext();
-      const recentTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
-
-      for (const context of Object.values(contexts)) {
-        if (context.timestamp > recentTime) {
-          this.cacheContext(context);
-        }
-      }
-
-      // Load recent tasks (last 7 days)
-      const tasks = await this.fileStorage.getTasks();
-
-      for (const task of tasks) {
-        if (task.timestamp > recentTime) {
-          this.cacheTask(task);
-        }
-      }
     } catch (error) {
       // If warmup fails, continue without cache - it will populate on demand
 
@@ -130,24 +117,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
   }
 
   /**
-   * Cache a context entry with indexing
-   */
-  private cacheContext(context: SharedContext): void {
-    this.contextCache.set(context.key, {
-      data: context,
-      timestamp: Date.now(),
-      ttl: context.ttl ?? this.config.cacheTtl,
-    });
-
-    // Update namespace index
-    if (context.namespace) {
-      this.addToIndex(this.contextsByNamespace, context.namespace, context);
-    }
-
-    this.enforceMaxCacheSize(this.contextCache);
-  }
-
-  /**
    * Cache an agent with indexing
    */
   private cacheAgent(agent: AgentRegistration): void {
@@ -158,22 +127,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
     });
 
     this.enforceMaxCacheSize(this.agentCache);
-  }
-
-  /**
-   * Cache a task with indexing
-   */
-  private cacheTask(task: TaskStatus): void {
-    this.taskCache.set(task.id, {
-      data: task,
-      timestamp: Date.now(),
-      ttl: this.config.cacheTtl,
-    });
-
-    // Update agent index
-    this.addToIndex(this.tasksByAgent, task.agent, task);
-
-    this.enforceMaxCacheSize(this.taskCache);
   }
 
   /**
@@ -244,7 +197,7 @@ export class IndexedStorage implements CacheableStorageAdapter {
   private cleanupExpiredCache(): void {
     const now = Date.now();
 
-    [this.messageCache, this.contextCache, this.agentCache, this.taskCache].forEach(cache => {
+    [this.messageCache, this.agentCache].forEach(cache => {
       for (const [key, entry] of cache.entries()) {
         if (entry.ttl && now - entry.timestamp > entry.ttl) {
           cache.delete(key);
@@ -265,17 +218,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
   }
 
   /**
-   * Check if context is still valid based on its TTL
-   */
-  private isContextValid(context: SharedContext): boolean {
-    if (!context.ttl) {
-      return true;
-    }
-
-    return Date.now() - context.timestamp < context.ttl;
-  }
-
-  /**
    * Invalidate a message from cache and indexes (reserved for future use)
    */
   // @ts-expect-error - Method reserved for future cache invalidation features
@@ -289,32 +231,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
   }
 
   /**
-   * Invalidate a context from cache and indexes (reserved for future use)
-   */
-  // @ts-expect-error - Method reserved for future cache invalidation features
-  private invalidateContext(context: SharedContext): void {
-    // Remove from cache
-    this.contextCache.delete(context.key);
-
-    // Remove from namespace index
-    if (context.namespace) {
-      this.removeFromIndex(this.contextsByNamespace, context.namespace, context);
-    }
-  }
-
-  /**
-   * Invalidate a task from cache and indexes (reserved for future use)
-   */
-  // @ts-expect-error - Method reserved for future cache invalidation features
-  private invalidateTask(task: TaskStatus): void {
-    // Remove from cache
-    this.taskCache.delete(task.id);
-
-    // Remove from agent index
-    this.removeFromIndex(this.tasksByAgent, task.agent, task);
-  }
-
-  /**
    * Validate cache integrity and detect corruption (reserved for future use)
    */
   // @ts-expect-error - Method reserved for future cache validation features
@@ -325,15 +241,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
         if (!entry.data || !entry.timestamp || !entry.data.id) {
           // eslint-disable-next-line no-console
           console.warn(`Corrupted message cache entry: ${key}`);
-
-          return false;
-        }
-      }
-
-      for (const [key, entry] of this.contextCache.entries()) {
-        if (!entry.data || !entry.timestamp || !entry.data.key) {
-          // eslint-disable-next-line no-console
-          console.warn(`Corrupted context cache entry: ${key}`);
 
           return false;
         }
@@ -372,14 +279,10 @@ export class IndexedStorage implements CacheableStorageAdapter {
     try {
       // Clear all corrupted cache and index data
       this.messageCache.clear();
-      this.contextCache.clear();
       this.agentCache.clear();
-      this.taskCache.clear();
 
       this.messagesByAgent.clear();
       this.messagesByType.clear();
-      this.contextsByNamespace.clear();
-      this.tasksByAgent.clear();
 
       // Rebuild from storage
       await this.warmupCaches();
@@ -403,9 +306,7 @@ export class IndexedStorage implements CacheableStorageAdapter {
       ...this.stats,
       cacheSize: {
         messages: this.messageCache.size,
-        contexts: this.contextCache.size,
         agents: this.agentCache.size,
-        tasks: this.taskCache.size,
       },
       hitRate: totalRequests > 0 ? this.stats.hits / totalRequests : 0,
     };
@@ -494,64 +395,6 @@ export class IndexedStorage implements CacheableStorageAdapter {
     this.stats.writes++;
   }
 
-  async saveContext(context: SharedContext): Promise<void> {
-    await this.fileStorage.saveContext(context);
-    this.cacheContext(context);
-    this.stats.writes++;
-  }
-
-  async getContext(key?: string, namespace?: string): Promise<Record<string, SharedContext>> {
-    // Try namespace index for filtered queries
-    if (!key && namespace) {
-      const cachedContexts = this.contextsByNamespace.get(namespace);
-
-      if (cachedContexts) {
-        this.stats.indexHits++;
-        const result: Record<string, SharedContext> = {};
-
-        for (const context of cachedContexts) {
-          // Check TTL using helper method
-          if (this.isContextValid(context)) {
-            result[context.key] = context;
-          }
-        }
-
-        return result;
-      }
-    }
-
-    // Single key lookup
-    if (key && !namespace) {
-      const cached = this.contextCache.get(key);
-
-      if (cached && this.isCacheEntryValid(cached)) {
-        this.stats.hits++;
-
-        // Check context TTL using helper method
-        const context = cached.data;
-
-        if (this.isContextValid(context)) {
-          return { [key]: context };
-        }
-
-        this.contextCache.delete(key);
-
-        return {};
-      }
-    }
-
-    // Fall back to file storage
-    this.stats.misses++;
-    const contexts = await this.fileStorage.getContext(key, namespace);
-
-    // Cache the results
-    for (const context of Object.values(contexts)) {
-      this.cacheContext(context);
-    }
-
-    return contexts;
-  }
-
   async saveAgent(agent: AgentRegistration): Promise<void> {
     await this.fileStorage.saveAgent(agent);
     this.cacheAgent(agent);
@@ -628,52 +471,100 @@ export class IndexedStorage implements CacheableStorageAdapter {
     this.stats.writes++;
   }
 
-  async saveTask(task: TaskStatus): Promise<void> {
-    await this.fileStorage.saveTask(task);
-    this.cacheTask(task);
-    this.stats.writes++;
-  }
-
-  async getTasks(agent?: string): Promise<TaskStatus[]> {
-    // Try agent index
-    if (agent) {
-      const cachedTasks = this.tasksByAgent.get(agent);
-
-      if (cachedTasks) {
-        this.stats.indexHits++;
-
-        return [...cachedTasks];
-      }
-    }
-
-    this.stats.misses++;
-    const tasks = await this.fileStorage.getTasks(agent);
-
-    // Cache the results
-    for (const task of tasks) {
-      this.cacheTask(task);
-    }
-
-    return tasks;
-  }
-
   async cleanup(olderThanDays = 7): Promise<void> {
     await this.fileStorage.cleanup(olderThanDays);
 
     // Clear all caches and indexes since data has been deleted from storage
     this.messageCache.clear();
-    this.contextCache.clear();
     this.agentCache.clear();
-    this.taskCache.clear();
 
     // Clear all indexes
     this.messagesByAgent.clear();
     this.messagesByType.clear();
-    this.contextsByNamespace.clear();
-    this.tasksByAgent.clear();
 
     // Re-warm caches with remaining data from storage
     await this.warmupCaches();
+  }
+
+  // Features system methods - delegate to FileStorage
+  async createFeature(feature: Feature): Promise<void> {
+    return this.fileStorage.createFeature(feature);
+  }
+
+  async getFeatures(filters?: FeatureFilters): Promise<Feature[]> {
+    return this.fileStorage.getFeatures(filters);
+  }
+
+  async getFeature(featureId: string): Promise<Feature | undefined> {
+    return this.fileStorage.getFeature(featureId);
+  }
+
+  async updateFeature(featureId: string, updates: Partial<Feature>): Promise<void> {
+    return this.fileStorage.updateFeature(featureId, updates);
+  }
+
+  async createTask(featureId: string, task: ParentTask): Promise<void> {
+    return this.fileStorage.createTask(featureId, task);
+  }
+
+  async getTasksInFeature(featureId: string): Promise<ParentTask[]> {
+    return this.fileStorage.getTasksInFeature(featureId);
+  }
+
+  async getTask(featureId: string, taskId: string): Promise<ParentTask | undefined> {
+    return this.fileStorage.getTask(featureId, taskId);
+  }
+
+  async updateTask(featureId: string, taskId: string, updates: Partial<ParentTask>): Promise<void> {
+    return this.fileStorage.updateTask(featureId, taskId, updates);
+  }
+
+  async createDelegation(featureId: string, delegation: Delegation): Promise<void> {
+    return this.fileStorage.createDelegation(featureId, delegation);
+  }
+
+  async getDelegations(featureId: string, agent?: string): Promise<Delegation[]> {
+    return this.fileStorage.getDelegations(featureId, agent);
+  }
+
+  async getDelegation(featureId: string, delegationId: string): Promise<Delegation | undefined> {
+    return this.fileStorage.getDelegation(featureId, delegationId);
+  }
+
+  async updateDelegation(
+    featureId: string,
+    delegationId: string,
+    updates: Partial<Delegation>,
+  ): Promise<void> {
+    return this.fileStorage.updateDelegation(featureId, delegationId, updates);
+  }
+
+  async createSubtask(featureId: string, subtask: Subtask): Promise<void> {
+    return this.fileStorage.createSubtask(featureId, subtask);
+  }
+
+  async getSubtasks(featureId: string, delegationId?: string): Promise<Subtask[]> {
+    return this.fileStorage.getSubtasks(featureId, delegationId);
+  }
+
+  async getSubtask(featureId: string, subtaskId: string): Promise<Subtask | undefined> {
+    return this.fileStorage.getSubtask(featureId, subtaskId);
+  }
+
+  async updateSubtask(
+    featureId: string,
+    subtaskId: string,
+    updates: Partial<Subtask>,
+  ): Promise<void> {
+    return this.fileStorage.updateSubtask(featureId, subtaskId, updates);
+  }
+
+  async getAgentWorkload(agentId: string): Promise<AgentWorkload> {
+    return this.fileStorage.getAgentWorkload(agentId);
+  }
+
+  async getFeatureData(featureId: string): Promise<FeatureData | undefined> {
+    return this.fileStorage.getFeatureData(featureId);
   }
 
   /**

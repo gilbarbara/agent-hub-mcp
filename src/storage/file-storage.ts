@@ -2,7 +2,20 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-import { AgentRegistration, Message, SharedContext, TaskStatus } from '~/types';
+import {
+  AgentFeatureWork,
+  AgentWorkload,
+  Delegation,
+  Feature,
+  FeatureData,
+  FeatureFilters,
+  FeatureStatus,
+  ParentTask,
+  PRIORITY_ORDER,
+  Subtask,
+} from '~/features/types';
+
+import { AgentRegistration, Message } from '~/types';
 
 import { StorageAdapter } from './types';
 
@@ -24,7 +37,7 @@ export class FileStorage implements StorageAdapter {
   }
 
   async init(): Promise<void> {
-    const directories = ['messages', 'context', 'agents', 'tasks'];
+    const directories = ['messages', 'agents', 'features'];
 
     for (const directory of directories) {
       await fs.mkdir(path.join(this.dataDirectory, directory), { recursive: true });
@@ -210,41 +223,6 @@ export class FileStorage implements StorageAdapter {
     }
   }
 
-  async saveContext(context: SharedContext): Promise<void> {
-    const safeKey = this.validatePathComponent(context.key);
-    const filePath = path.join(this.dataDirectory, 'context', `${safeKey}.json`);
-
-    await this.writeJsonFile(filePath, context);
-  }
-
-  async getContext(key?: string, namespace?: string): Promise<Record<string, SharedContext>> {
-    const contextDirectory = path.join(this.dataDirectory, 'context');
-    const files = await fs.readdir(contextDirectory);
-    const contexts: Record<string, SharedContext> = {};
-
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const context = await this.readJsonFile<SharedContext>(path.join(contextDirectory, file));
-
-        if (context) {
-          if (key && context.key !== key) {
-            continue;
-          }
-
-          if (namespace && context.namespace !== namespace) {
-            continue;
-          }
-
-          if (!context.ttl || Date.now() - context.timestamp < context.ttl) {
-            contexts[context.key] = context;
-          }
-        }
-      }
-    }
-
-    return contexts;
-  }
-
   async saveAgent(agent: AgentRegistration): Promise<void> {
     const safeId = this.validatePathComponent(agent.id);
     const filePath = path.join(this.dataDirectory, 'agents', `${safeId}.json`);
@@ -304,35 +282,6 @@ export class FileStorage implements StorageAdapter {
     }
   }
 
-  async saveTask(task: TaskStatus): Promise<void> {
-    const safeId = this.validatePathComponent(task.id);
-    const filePath = path.join(this.dataDirectory, 'tasks', `${safeId}.json`);
-
-    await this.writeJsonFile(filePath, task);
-  }
-
-  async getTasks(agent?: string): Promise<TaskStatus[]> {
-    const tasksDirectory = path.join(this.dataDirectory, 'tasks');
-    const files = await fs.readdir(tasksDirectory);
-    const tasks: TaskStatus[] = [];
-
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const task = await this.readJsonFile<TaskStatus>(path.join(tasksDirectory, file));
-
-        if (task) {
-          if (agent && task.agent !== agent) {
-            continue;
-          }
-
-          tasks.push(task);
-        }
-      }
-    }
-
-    return tasks;
-  }
-
   async cleanup(olderThanDays = 7): Promise<void> {
     const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
 
@@ -348,5 +297,408 @@ export class FileStorage implements StorageAdapter {
         }
       }
     }
+  }
+
+  // Features system implementation
+
+  async createFeature(feature: Feature): Promise<void> {
+    const safeId = this.validatePathComponent(feature.id);
+    const featureDirectory = path.join(this.dataDirectory, 'features', safeId);
+
+    // Create feature directory structure
+    await fs.mkdir(featureDirectory, { recursive: true });
+    await fs.mkdir(path.join(featureDirectory, 'tasks'), { recursive: true });
+    await fs.mkdir(path.join(featureDirectory, 'delegations'), { recursive: true });
+    await fs.mkdir(path.join(featureDirectory, 'subtasks'), { recursive: true });
+
+    const featureFile = path.join(featureDirectory, 'feature.json');
+
+    await this.writeJsonFile(featureFile, feature);
+  }
+
+  async getFeatures(filters?: FeatureFilters): Promise<Feature[]> {
+    const featuresDirectory = path.join(this.dataDirectory, 'features');
+
+    try {
+      const featureIds = await fs.readdir(featuresDirectory);
+      const features: Feature[] = [];
+
+      for (const featureId of featureIds) {
+        const featureFile = path.join(featuresDirectory, featureId, 'feature.json');
+        const feature = await this.readJsonFile<Feature>(featureFile);
+
+        if (feature) {
+          // Apply filters
+          if (filters?.status && feature.status !== filters.status) {
+            continue;
+          }
+
+          if (filters?.priority && feature.priority !== filters.priority) {
+            continue;
+          }
+
+          if (filters?.createdBy && feature.createdBy !== filters.createdBy) {
+            continue;
+          }
+
+          if (filters?.agent && !feature.assignedAgents?.includes(filters.agent)) {
+            continue;
+          }
+
+          features.push(feature);
+        }
+      }
+
+      // Sort by priority and then by creation time
+      return features.sort((a, b) => {
+        const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+
+        return b.createdAt - a.createdAt;
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  async getFeature(featureId: string): Promise<Feature | undefined> {
+    const safeId = this.validatePathComponent(featureId);
+    const featureFile = path.join(this.dataDirectory, 'features', safeId, 'feature.json');
+
+    const result = await this.readJsonFile<Feature>(featureFile);
+
+    return result || undefined;
+  }
+
+  async updateFeature(featureId: string, updates: Partial<Feature>): Promise<void> {
+    const feature = await this.getFeature(featureId);
+
+    if (!feature) {
+      throw new Error(`Feature not found: ${featureId}`);
+    }
+
+    const updatedFeature = { ...feature, ...updates, updatedAt: Date.now() };
+    const safeId = this.validatePathComponent(featureId);
+    const featureFile = path.join(this.dataDirectory, 'features', safeId, 'feature.json');
+
+    await this.writeJsonFile(featureFile, updatedFeature);
+  }
+
+  async createTask(featureId: string, task: ParentTask): Promise<void> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeTaskId = this.validatePathComponent(task.id);
+    const taskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'tasks',
+      `${safeTaskId}.json`,
+    );
+
+    await this.writeJsonFile(taskFile, task);
+  }
+
+  async getTasksInFeature(featureId: string): Promise<ParentTask[]> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const tasksDirectory = path.join(this.dataDirectory, 'features', safeFeatureId, 'tasks');
+
+    try {
+      const files = await fs.readdir(tasksDirectory);
+      const tasks: ParentTask[] = [];
+
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const task = await this.readJsonFile<ParentTask>(path.join(tasksDirectory, file));
+
+          if (task) {
+            tasks.push(task);
+          }
+        }
+      }
+
+      return tasks.sort((a, b) => a.createdAt - b.createdAt);
+    } catch {
+      return [];
+    }
+  }
+
+  async getTask(featureId: string, taskId: string): Promise<ParentTask | undefined> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeTaskId = this.validatePathComponent(taskId);
+    const taskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'tasks',
+      `${safeTaskId}.json`,
+    );
+
+    const result = await this.readJsonFile<ParentTask>(taskFile);
+
+    return result || undefined;
+  }
+
+  async updateTask(featureId: string, taskId: string, updates: Partial<ParentTask>): Promise<void> {
+    const task = await this.getTask(featureId, taskId);
+
+    if (!task) {
+      throw new Error(`Task not found: ${taskId} in feature ${featureId}`);
+    }
+
+    const updatedTask = { ...task, ...updates, updatedAt: Date.now() };
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeTaskId = this.validatePathComponent(taskId);
+    const taskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'tasks',
+      `${safeTaskId}.json`,
+    );
+
+    await this.writeJsonFile(taskFile, updatedTask);
+  }
+
+  async createDelegation(featureId: string, delegation: Delegation): Promise<void> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeDelegationId = this.validatePathComponent(delegation.id);
+    const delegationFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'delegations',
+      `${safeDelegationId}.json`,
+    );
+
+    await this.writeJsonFile(delegationFile, delegation);
+  }
+
+  async getDelegations(featureId: string, agent?: string): Promise<Delegation[]> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const delegationsDirectory = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'delegations',
+    );
+
+    try {
+      const files = await fs.readdir(delegationsDirectory);
+      const delegations: Delegation[] = [];
+
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const delegation = await this.readJsonFile<Delegation>(
+            path.join(delegationsDirectory, file),
+          );
+
+          if (delegation) {
+            if (agent && delegation.agent !== agent) {
+              continue;
+            }
+
+            delegations.push(delegation);
+          }
+        }
+      }
+
+      return delegations.sort((a, b) => a.createdAt - b.createdAt);
+    } catch {
+      return [];
+    }
+  }
+
+  async getDelegation(featureId: string, delegationId: string): Promise<Delegation | undefined> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeDelegationId = this.validatePathComponent(delegationId);
+    const delegationFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'delegations',
+      `${safeDelegationId}.json`,
+    );
+
+    const result = await this.readJsonFile<Delegation>(delegationFile);
+
+    return result || undefined;
+  }
+
+  async updateDelegation(
+    featureId: string,
+    delegationId: string,
+    updates: Partial<Delegation>,
+  ): Promise<void> {
+    const delegation = await this.getDelegation(featureId, delegationId);
+
+    if (!delegation) {
+      throw new Error(`Delegation not found: ${delegationId} in feature ${featureId}`);
+    }
+
+    const updatedDelegation = { ...delegation, ...updates, updatedAt: Date.now() };
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeDelegationId = this.validatePathComponent(delegationId);
+    const delegationFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'delegations',
+      `${safeDelegationId}.json`,
+    );
+
+    await this.writeJsonFile(delegationFile, updatedDelegation);
+  }
+
+  async createSubtask(featureId: string, subtask: Subtask): Promise<void> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeSubtaskId = this.validatePathComponent(subtask.id);
+    const subtaskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'subtasks',
+      `${safeSubtaskId}.json`,
+    );
+
+    await this.writeJsonFile(subtaskFile, subtask);
+  }
+
+  async getSubtasks(featureId: string, delegationId?: string): Promise<Subtask[]> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const subtasksDirectory = path.join(this.dataDirectory, 'features', safeFeatureId, 'subtasks');
+
+    try {
+      const files = await fs.readdir(subtasksDirectory);
+      const subtasks: Subtask[] = [];
+
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const subtask = await this.readJsonFile<Subtask>(path.join(subtasksDirectory, file));
+
+          if (subtask) {
+            if (delegationId && subtask.delegationId !== delegationId) {
+              continue;
+            }
+
+            subtasks.push(subtask);
+          }
+        }
+      }
+
+      return subtasks.sort((a, b) => a.createdAt - b.createdAt);
+    } catch {
+      return [];
+    }
+  }
+
+  async getSubtask(featureId: string, subtaskId: string): Promise<Subtask | undefined> {
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeSubtaskId = this.validatePathComponent(subtaskId);
+    const subtaskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'subtasks',
+      `${safeSubtaskId}.json`,
+    );
+
+    const result = await this.readJsonFile<Subtask>(subtaskFile);
+
+    return result || undefined;
+  }
+
+  async updateSubtask(
+    featureId: string,
+    subtaskId: string,
+    updates: Partial<Subtask>,
+  ): Promise<void> {
+    const subtask = await this.getSubtask(featureId, subtaskId);
+
+    if (!subtask) {
+      throw new Error(`Subtask not found: ${subtaskId} in feature ${featureId}`);
+    }
+
+    const updatedSubtask = { ...subtask, ...updates, updatedAt: Date.now() };
+    const safeFeatureId = this.validatePathComponent(featureId);
+    const safeSubtaskId = this.validatePathComponent(subtaskId);
+    const subtaskFile = path.join(
+      this.dataDirectory,
+      'features',
+      safeFeatureId,
+      'subtasks',
+      `${safeSubtaskId}.json`,
+    );
+
+    await this.writeJsonFile(subtaskFile, updatedSubtask);
+  }
+
+  async getAgentWorkload(agentId: string): Promise<AgentWorkload> {
+    const featuresDirectory = path.join(this.dataDirectory, 'features');
+    const activeFeatures: AgentFeatureWork[] = [];
+
+    try {
+      const featureIds = await fs.readdir(featuresDirectory);
+
+      for (const featureId of featureIds) {
+        const feature = await this.getFeature(featureId);
+
+        if (!feature || feature.status !== FeatureStatus.ACTIVE) {
+          continue;
+        }
+
+        const myDelegations = await this.getDelegations(featureId, agentId);
+
+        if (myDelegations.length === 0) {
+          continue;
+        }
+
+        const mySubtasks = await this.getSubtasks(featureId).then(subtasks =>
+          subtasks.filter(s => s.createdBy === agentId),
+        );
+
+        activeFeatures.push({
+          featureId,
+          feature,
+          myDelegations,
+          mySubtasks,
+        });
+      }
+
+      // Sort by feature priority
+      activeFeatures.sort((a, b) => {
+        const aPriority = PRIORITY_ORDER[a.feature.priority];
+        const bPriority = PRIORITY_ORDER[b.feature.priority];
+
+        return aPriority - bPriority;
+      });
+
+      return { activeFeatures };
+    } catch {
+      return { activeFeatures: [] };
+    }
+  }
+
+  async getFeatureData(featureId: string): Promise<FeatureData | undefined> {
+    const feature = await this.getFeature(featureId);
+
+    if (!feature) {
+      return undefined;
+    }
+
+    const [tasks, delegations, subtasks] = await Promise.all([
+      this.getTasksInFeature(featureId),
+      this.getDelegations(featureId),
+      this.getSubtasks(featureId),
+    ]);
+
+    return {
+      feature,
+      tasks,
+      delegations,
+      subtasks,
+    };
   }
 }

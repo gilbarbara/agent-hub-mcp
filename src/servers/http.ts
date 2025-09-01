@@ -6,20 +6,18 @@ import express, { type Express } from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { AgentStatusCleanup } from '~/agents/cleanup';
+import { AgentService } from '~/agents/service';
 import { AgentSession, SessionManager } from '~/agents/session';
-import { ContextService } from '~/context/service';
 import { MessageService } from '~/messaging/service';
 import { StorageAdapter } from '~/storage';
-import { TaskService } from '~/tasks/service';
 
 import { createMcpServer } from './mcp';
 import { NotificationService } from './notifications';
 
 export interface HttpServerDependencies {
-  contextService: ContextService;
+  agentService: AgentService;
   messageService: MessageService;
   storage: StorageAdapter;
-  taskService: TaskService;
 }
 
 export function createHttpServer(deps: HttpServerDependencies): Express {
@@ -170,8 +168,7 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
       const server = createMcpServer({
         storage: deps.storage,
         messageService: deps.messageService,
-        contextService: deps.contextService,
-        taskService: deps.taskService,
+        agentService: deps.agentService,
         getCurrentSession: () =>
           transport.sessionId ? sessionManager.get(transport.sessionId) : undefined,
         broadcastNotification,

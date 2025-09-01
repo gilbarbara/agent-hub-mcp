@@ -1,5 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 
+import { FeatureStatus } from '~/features/types';
 import { StorageAdapter } from '~/storage';
 
 import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
@@ -18,8 +19,8 @@ export async function sendWelcomeMessage(
     const unreadMessages = messages.filter(
       m => !m.read && (m.to === newAgent.id || m.to === 'all'),
     );
-    const tasks = await storage.getTasks();
-    const activeTasks = tasks.filter(t => t.status === 'in-progress');
+    const features = await storage.getFeatures();
+    const activeFeatures = features.filter(t => t.status === FeatureStatus.ACTIVE);
 
     // Check if agent is properly registered
     const isProperlyRegistered =
@@ -41,11 +42,10 @@ register_agent({
 })
 
 📋 Quick examples:
-• register_agent({"id": "my-react-app", "projectPath": "/Users/name/react-project", "role": "Frontend Developer"})
-• register_agent({"id": "api-service", "projectPath": "/Users/name/api-project", "role": "Backend Developer"})
+• register_agent({"id": "react-project", "projectPath": "/Users/name/react-project", "role": "Frontend Developer"})
+• register_agent({"id": "api-project", "projectPath": "/Users/name/api-project", "role": "Backend Developer"})
 
 ✨ After registration, you'll get:
-• Instant notifications
 • Project capability detection
 • Full collaboration features
 
@@ -68,10 +68,9 @@ ${otherAgents.map(a => `  • ${a.id}: ${a.role} ${a.capabilities.length > 0 ? `
 
 ${unreadMessages.length > 0 ? `📬 You have ${unreadMessages.length} pending message(s)` : ''}
 
-${activeTasks.length > 0 ? `🚀 ${activeTasks.length} active task(s) in progress` : ''}
+${activeFeatures.length > 0 ? `🚀 ${activeFeatures.length} active feature(s) in progress` : ''}
 
-🔧 Available tools: get_agent_status, send_message, set_context, get_context
-📡 Instant notifications are active!`;
+🔧 Available tools: get_agent_workload, send_message`;
     }
 
     const welcomeMessage: Message = {
@@ -92,7 +91,7 @@ ${activeTasks.length > 0 ? `🚀 ${activeTasks.length} active task(s) in progres
           capabilities: a.capabilities,
         })),
         pendingMessages: unreadMessages.length,
-        activeTasks: activeTasks.length,
+        activeFeatures: activeFeatures.length,
       },
     };
 
@@ -105,33 +104,4 @@ ${activeTasks.length > 0 ? `🚀 ${activeTasks.length} active task(s) in progres
     // eslint-disable-next-line no-console
     console.error('Error sending welcome message:', error);
   }
-}
-
-export async function updateExistingAgent(
-  storage: StorageAdapter,
-  agent: AgentRegistration,
-): Promise<AgentRegistration> {
-  // Check if agent already exists and update instead of duplicating
-  const existingAgents = await storage.getAgents();
-  const existingAgent = existingAgents.find(a => a.id === agent.id);
-
-  if (existingAgent) {
-    // Update existing agent's lastSeen timestamp
-    const updatedAgent = { ...existingAgent, lastSeen: Date.now(), status: 'active' as const };
-
-    await storage.saveAgent(updatedAgent);
-
-    // eslint-disable-next-line no-console
-    console.log(`🔄 Updated existing agent: ${agent.id} (${agent.role})`);
-
-    return updatedAgent;
-  }
-
-  // Save new agent to storage
-  await storage.saveAgent(agent);
-
-  // eslint-disable-next-line no-console
-  console.log(`✅ Registered new agent: ${agent.id} (${agent.role})`);
-
-  return agent;
 }

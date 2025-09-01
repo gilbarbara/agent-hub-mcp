@@ -193,95 +193,6 @@ describe('MessageService', () => {
     });
   });
 
-  describe('sendSyncRequest', () => {
-    it('should send sync request message', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-      mockStorage.getMessages.mockResolvedValue([]);
-
-      const promise = messageService.sendSyncRequest('agent1', 'agent2', 'sync topic', 1000);
-
-      // Advance time to trigger timeout
-      vi.setSystemTime(mockTimestamp + 1001);
-      await vi.runOnlyPendingTimersAsync();
-
-      const result = await promise;
-
-      expect(result.timeout).toBe(true);
-      expect(mockStorage.saveMessage).toHaveBeenCalledWith({
-        id: 'mock-id-123',
-        from: 'agent1',
-        to: 'agent2',
-        type: MessageType.SYNC_REQUEST,
-        content: 'sync topic',
-        timestamp: mockTimestamp,
-        read: false,
-        priority: MessagePriority.URGENT,
-      });
-    });
-
-    it.skip('should return response when received immediately', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-
-      // Mock response message that's immediately available
-      const responseMessage: Message = {
-        id: 'response-123',
-        from: 'agent2',
-        to: 'agent1',
-        type: MessageType.CONTEXT,
-        content: 'sync response',
-        timestamp: mockTimestamp + 500,
-        read: false,
-        priority: MessagePriority.NORMAL,
-        threadId: 'mock-id-123',
-      };
-
-      // Return the response immediately on first check (no waiting needed)
-      mockStorage.getMessages.mockResolvedValueOnce([responseMessage]);
-
-      // Start the sync request
-      const promise = messageService.sendSyncRequest('agent1', 'agent2', 'sync topic', 100);
-
-      // Advance time slightly to allow the first check
-      vi.advanceTimersByTime(50);
-
-      const result = await promise;
-
-      expect(result.response).toBe('sync response');
-      expect(result.timeout).toBeUndefined();
-    });
-
-    it('should handle timeout when no response received', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-      mockStorage.getMessages.mockResolvedValue([]);
-
-      const promise = messageService.sendSyncRequest('agent1', 'agent2', 'sync topic', 1000);
-
-      // Advance time past timeout
-      vi.setSystemTime(mockTimestamp + 1001);
-      await vi.runOnlyPendingTimersAsync();
-
-      const result = await promise;
-
-      expect(result.timeout).toBe(true);
-      expect(result.response).toBeUndefined();
-    });
-  });
-
   describe('getMessageById', () => {
     it('should retrieve message by ID', async () => {
       const mockMessage: Message = {
@@ -352,7 +263,6 @@ describe('MessageService', () => {
         { type: MessageType.QUESTION, expected: 'question' },
         { type: MessageType.COMPLETION, expected: 'completion' },
         { type: MessageType.ERROR, expected: 'error' },
-        { type: MessageType.SYNC_REQUEST, expected: 'sync_request' },
       ];
 
       for (const testCase of testCases) {
@@ -556,71 +466,6 @@ describe('MessageService', () => {
       );
 
       consoleErrorSpy.mockRestore();
-    });
-  });
-
-  describe('Sync Request Edge Cases', () => {
-    it('should handle sync request with zero timeout', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-      mockStorage.getMessages.mockResolvedValue([]);
-
-      const promise = messageService.sendSyncRequest('agent1', 'agent2', 'sync topic', 0);
-
-      await vi.runOnlyPendingTimersAsync();
-
-      const result = await promise;
-
-      expect(result.timeout).toBe(true);
-    });
-
-    it('should handle sync request with very long timeout', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-      mockStorage.getMessages.mockResolvedValue([]);
-
-      const promise = messageService.sendSyncRequest('agent1', 'agent2', 'sync topic', 1000);
-
-      // Advance time past timeout
-      vi.setSystemTime(mockTimestamp + 1001);
-      await vi.runOnlyPendingTimersAsync();
-
-      const result = await promise;
-
-      expect(result.timeout).toBe(true);
-    }, 2000);
-
-    it('should handle sync request to broadcast "all"', async () => {
-      vi.useFakeTimers();
-      const mockTimestamp = 1700000000000;
-
-      vi.setSystemTime(mockTimestamp);
-
-      mockStorage.saveMessage.mockResolvedValue(undefined);
-      mockStorage.getMessages.mockResolvedValue([]);
-
-      const promise = messageService.sendSyncRequest('agent1', 'all', 'broadcast sync', 100);
-
-      vi.setSystemTime(mockTimestamp + 101);
-      await vi.runOnlyPendingTimersAsync();
-
-      const result = await promise;
-
-      expect(result.timeout).toBe(true);
-      expect(mockStorage.saveMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: 'all',
-          type: MessageType.SYNC_REQUEST,
-        }),
-      );
     });
   });
 });

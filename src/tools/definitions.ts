@@ -1,8 +1,39 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
+import { FeaturePriority, FeatureStatus } from '~/features/types';
+
 import { MessagePriority, MessageType } from '~/types';
 
 export const TOOLS: Tool[] = [
+  {
+    name: 'register_agent',
+    description: 'Register an agent with the hub',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description:
+            'Agent identifier (optional - will be generated from project path if not provided)',
+        },
+        projectPath: { type: 'string', description: 'Agent working directory' },
+        role: { type: 'string', description: 'Agent role description' },
+        capabilities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Agent capabilities',
+          default: [],
+        },
+        collaboratesWith: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Expected collaborators',
+          default: [],
+        },
+      },
+      required: ['projectPath', 'role'],
+    },
+  },
   {
     name: 'send_message',
     description: 'Send a message to another agent or broadcast to all agents',
@@ -52,85 +83,6 @@ export const TOOLS: Tool[] = [
     },
   },
   {
-    name: 'set_context',
-    description: 'Store a value in the shared context',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Context key' },
-        value: { description: 'Context value (any JSON-serializable data)' },
-        agent: { type: 'string', description: 'Agent setting the context' },
-        ttl: { type: 'number', description: 'Time-to-live in milliseconds' },
-        namespace: { type: 'string', description: 'Optional namespace for organization' },
-      },
-      required: ['key', 'value', 'agent'],
-    },
-  },
-  {
-    name: 'get_context',
-    description: 'Retrieve values from the shared context',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Specific context key to retrieve' },
-        namespace: { type: 'string', description: 'Filter by namespace' },
-      },
-    },
-  },
-  {
-    name: 'register_agent',
-    description: 'Register an agent with the hub',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: {
-          type: 'string',
-          description:
-            'Agent identifier (optional - will be generated from project path if not provided)',
-        },
-        projectPath: { type: 'string', description: 'Agent working directory' },
-        role: { type: 'string', description: 'Agent role description' },
-        capabilities: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Agent capabilities',
-          default: [],
-        },
-        collaboratesWith: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Expected collaborators',
-          default: [],
-        },
-      },
-      required: ['projectPath', 'role'],
-    },
-  },
-  {
-    name: 'update_task_status',
-    description: 'Update the status of a task',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agent: { type: 'string', description: 'Agent working on the task' },
-        task: { type: 'string', description: 'Task identifier or description' },
-        status: {
-          type: 'string',
-          enum: ['started', 'in-progress', 'completed', 'blocked'],
-          description: 'Task status',
-        },
-        details: { type: 'string', description: 'Additional details' },
-        dependencies: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Task dependencies',
-          default: [],
-        },
-      },
-      required: ['agent', 'task', 'status'],
-    },
-  },
-  {
     name: 'get_agent_status',
     description: 'Get status of agents and their tasks',
     inputSchema: {
@@ -141,29 +93,162 @@ export const TOOLS: Tool[] = [
     },
   },
   {
-    name: 'start_collaboration',
-    description: 'Initialize collaboration for a feature',
+    name: 'create_feature',
+    description: 'Create a new feature for multi-agent collaboration',
     inputSchema: {
       type: 'object',
       properties: {
-        feature: { type: 'string', description: 'Feature name or identifier' },
-        agent: { type: 'string', description: 'Agent starting the collaboration' },
+        name: { type: 'string', description: 'Feature name (will be converted to kebab-case ID)' },
+        title: { type: 'string', description: 'Human-readable feature title' },
+        description: { type: 'string', description: 'Detailed feature requirements and context' },
+        priority: {
+          type: 'string',
+          enum: Object.values(FeaturePriority),
+          description: 'Feature priority level',
+          default: FeaturePriority.NORMAL,
+        },
+        estimatedAgents: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Agents expected to be needed for this feature',
+          default: [],
+        },
+        createdBy: { type: 'string', description: 'Agent creating this feature' },
       },
-      required: ['feature'],
+      required: ['name', 'title', 'description', 'createdBy'],
     },
   },
   {
-    name: 'sync_request',
-    description: 'Send a synchronous request to another agent and wait for response',
+    name: 'create_task',
+    description: 'Create a task within a feature with agent delegations',
     inputSchema: {
       type: 'object',
       properties: {
-        from: { type: 'string', description: 'Requesting agent' },
-        to: { type: 'string', description: 'Target agent' },
-        topic: { type: 'string', description: 'Topic or question' },
-        timeout: { type: 'number', description: 'Timeout in milliseconds', default: 30000 },
+        featureId: { type: 'string', description: 'Feature ID to create task in' },
+        title: { type: 'string', description: 'Task title' },
+        description: { type: 'string', description: 'Detailed task requirements' },
+        delegations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              agent: { type: 'string', description: 'Agent ID to delegate to' },
+              scope: { type: 'string', description: 'What this agent should accomplish' },
+            },
+            required: ['agent', 'scope'],
+          },
+          description: 'Agent delegations for this task',
+        },
+        createdBy: { type: 'string', description: 'Agent creating this task' },
       },
-      required: ['from', 'to', 'topic'],
+      required: ['featureId', 'title', 'description', 'delegations', 'createdBy'],
+    },
+  },
+  {
+    name: 'create_subtask',
+    description: 'Create implementation subtasks within a delegation',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        featureId: { type: 'string', description: 'Feature ID' },
+        delegationId: { type: 'string', description: 'Delegation ID to create subtasks for' },
+        subtasks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Subtask title' },
+              description: { type: 'string', description: 'Subtask description' },
+              dependsOn: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Subtask IDs this depends on',
+                default: [],
+              },
+            },
+            required: ['title'],
+          },
+          description: 'Subtasks to create',
+        },
+        createdBy: { type: 'string', description: 'Agent creating these subtasks' },
+      },
+      required: ['featureId', 'delegationId', 'subtasks', 'createdBy'],
+    },
+  },
+  {
+    name: 'get_agent_workload',
+    description: 'Get all work assigned to an agent across all features',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agentId: { type: 'string', description: 'Agent ID to get workload for' },
+      },
+      required: ['agentId'],
+    },
+  },
+  {
+    name: 'get_features',
+    description: 'Get list of features with optional filtering',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: Object.values(FeatureStatus),
+          description: 'Filter by feature status',
+        },
+        priority: {
+          type: 'string',
+          enum: Object.values(FeaturePriority),
+          description: 'Filter by feature priority',
+        },
+        agent: { type: 'string', description: 'Filter features assigned to this agent' },
+        createdBy: { type: 'string', description: 'Filter features created by this agent' },
+      },
+    },
+  },
+  {
+    name: 'get_feature',
+    description: 'Get complete feature data including tasks, delegations, and subtasks',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        featureId: { type: 'string', description: 'Feature ID to retrieve' },
+      },
+      required: ['featureId'],
+    },
+  },
+  {
+    name: 'accept_delegation',
+    description: 'Accept a delegation assigned to an agent',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        featureId: { type: 'string', description: 'Feature ID' },
+        delegationId: { type: 'string', description: 'Delegation ID to accept' },
+        agentId: { type: 'string', description: 'Agent accepting the delegation' },
+      },
+      required: ['featureId', 'delegationId', 'agentId'],
+    },
+  },
+  {
+    name: 'update_subtask',
+    description: 'Update subtask status and provide output/context',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        featureId: { type: 'string', description: 'Feature ID' },
+        subtaskId: { type: 'string', description: 'Subtask ID to update' },
+        status: {
+          type: 'string',
+          enum: ['todo', 'in-progress', 'completed', 'blocked'],
+          description: 'New subtask status',
+        },
+        output: { type: 'string', description: 'Output or context for other agents' },
+        blockedReason: { type: 'string', description: 'Reason if status is blocked' },
+        updatedBy: { type: 'string', description: 'Agent updating this subtask' },
+      },
+      required: ['featureId', 'subtaskId', 'updatedBy'],
     },
   },
 ];

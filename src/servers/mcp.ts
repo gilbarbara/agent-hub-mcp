@@ -7,23 +7,22 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
+import { AgentService } from '~/agents/service';
 import { AgentSession } from '~/agents/session';
-import { ContextService } from '~/context/service';
+import { FeatureStatus } from '~/features/types';
 import { MessageService } from '~/messaging/service';
 import { StorageAdapter } from '~/storage';
-import { TaskService } from '~/tasks/service';
 import { TOOLS } from '~/tools/definitions';
 import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';
 
 export interface McpServerDependencies {
+  agentService: AgentService;
   broadcastNotification: (method: string, params: any) => Promise<void>;
-  contextService: ContextService;
   getCurrentSession: () => AgentSession | undefined;
   messageService: MessageService;
   sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
   storage: StorageAdapter;
-  taskService: TaskService;
 }
 
 export function createMcpServer(deps: McpServerDependencies): Server {
@@ -58,8 +57,7 @@ export function createMcpServer(deps: McpServerDependencies): Server {
   const toolHandlerServices: ToolHandlerServices = {
     storage: deps.storage,
     messageService: deps.messageService,
-    contextService: deps.contextService,
-    taskService: deps.taskService,
+    agentService: deps.agentService,
     getCurrentSession: deps.getCurrentSession,
     broadcastNotification: deps.broadcastNotification,
     sendNotificationToAgent: deps.sendNotificationToAgent,
@@ -109,8 +107,27 @@ Quick Examples:
 register_agent({"id": "react-app", "projectPath": "/Users/name/my-react-app", "role": "Frontend Developer"})
 register_agent({"id": "api-server", "projectPath": "/Users/name/my-api", "role": "Backend Developer"})
 
-After registration you'll get:
-✓ Real-time notifications  ✓ Capability detection  ✓ Agent collaboration
+After registration you'll be able to:
+✓ Exchange messages with other agents (check manually with get_messages)
+✓ Create and collaborate on features (multi-agent projects)
+✓ Delegate tasks to specific agents with clear scope
+✓ Track implementation progress with subtasks
+
+📋 Collaboration Workflow:
+1. create_feature - Start a new multi-agent project
+2. create_task - Break features into tasks with agent delegations
+3. accept_delegation - Accept work assigned to you
+4. create_subtask - Track your implementation steps
+5. update_subtask - Report progress on your work
+6. get_agent_workload - See all your assigned work
+
+💬 Communication:
+• send_message - Send messages to other agents
+• get_messages - Check for new messages (manual check required)
+• get_agent_status - See who's active and their capabilities
+
+Note: Messages are stored instantly but require manual checking with get_messages.
+Claude Code uses a pull-only model - no automatic notifications.
 
 ${
   activeAgents.length > 0
@@ -124,9 +141,47 @@ ${
     tools: TOOLS,
   }));
 
+  // Tool call handler
+  server.setRequestHandler(CallToolRequestSchema, async request => {
+    const { arguments: arguments_, name } = request.params;
+
+    // Update agent's lastSeen timestamp
+    await updateAgentLastSeen();
+
+    // Get the tool handler
+    const handler = toolHandlers[name as keyof typeof toolHandlers];
+
+    if (!handler) {
+      throw new Error(`Unknown tool: ${name}`);
+    }
+
+    try {
+      const result = await handler(arguments_ || {});
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ error: errorMessage }),
+          },
+        ],
+      };
+    }
+  });
+
   // Resource handlers for agent discovery
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
-    const contexts = await deps.storage.getContext();
     const currentSession = deps.getCurrentSession();
 
     const resources = [
@@ -161,20 +216,6 @@ ${
         },
       );
     }
-
-    // Add dynamic context resources
-    Object.keys(contexts).forEach(key => {
-      const context = contexts[key];
-
-      if (context.namespace) {
-        resources.push({
-          uri: `agent-hub://context/${context.namespace}`,
-          name: `Context: ${context.namespace}`,
-          description: `Shared context for ${context.namespace}`,
-          mimeType: 'application/json',
-        });
-      }
-    });
 
     return { resources };
   });
@@ -271,7 +312,7 @@ ${
     }
 
     if (uri === 'agent-hub://collaboration') {
-      const tasks = await deps.storage.getTasks();
+      const features = await deps.storage.getFeatures();
       const messages = await deps.storage.getMessages({});
       const unreadMessages = messages.filter(m => !m.read);
 
@@ -282,7 +323,7 @@ ${
             mimeType: 'application/json',
             text: JSON.stringify(
               {
-                activeTasks: tasks.filter(t => t.status === 'in-progress').length,
+                activeFeatures: features.filter(t => t.status === FeatureStatus.ACTIVE).length,
                 pendingMessages: unreadMessages.length,
                 recentActivity: unreadMessages.slice(0, 5).map(m => ({
                   from: m.from,
@@ -295,21 +336,6 @@ ${
               null,
               2,
             ),
-          },
-        ],
-      };
-    }
-
-    if (uri.startsWith('agent-hub://context/')) {
-      const namespace = uri.replace('agent-hub://context/', '');
-      const contexts = await deps.storage.getContext(undefined, namespace);
-
-      return {
-        contents: [
-          {
-            uri,
-            mimeType: 'application/json',
-            text: JSON.stringify(contexts, null, 2),
           },
         ],
       };

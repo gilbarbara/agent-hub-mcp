@@ -3,14 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileStorage } from '~/storage/file-storage';
 import { IndexedStorage } from '~/storage/indexed-storage';
 
-import {
-  AgentRegistration,
-  Message,
-  MessagePriority,
-  MessageType,
-  SharedContext,
-  TaskStatus,
-} from '~/types';
+import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
 
 // Mock the FileStorage implementation
 vi.mock('~/storage/file-storage');
@@ -40,22 +33,6 @@ describe('IndexedStorage', () => {
     collaboratesWith: ['agent-2'],
   };
 
-  const mockContext: SharedContext = {
-    key: 'test-key',
-    value: { data: 'test' },
-    version: 1,
-    updatedBy: 'agent1',
-    timestamp: Date.now(),
-  };
-
-  const mockTask: TaskStatus = {
-    id: 'task-1',
-    agent: 'agent1',
-    task: 'Test task',
-    status: 'in-progress',
-    timestamp: Date.now(),
-  };
-
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -71,8 +48,6 @@ describe('IndexedStorage', () => {
     vi.mocked(mockFileStorage.init).mockResolvedValue();
     vi.mocked(mockFileStorage.getMessages).mockResolvedValue([]);
     vi.mocked(mockFileStorage.getAgents).mockResolvedValue([]);
-    vi.mocked(mockFileStorage.getContext).mockResolvedValue({});
-    vi.mocked(mockFileStorage.getTasks).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -87,8 +62,6 @@ describe('IndexedStorage', () => {
 
       vi.mocked(mockFileStorage.getMessages).mockResolvedValue([recentMessage]);
       vi.mocked(mockFileStorage.getAgents).mockResolvedValue([mockAgent]);
-      vi.mocked(mockFileStorage.getContext).mockResolvedValue({ 'test-key': mockContext });
-      vi.mocked(mockFileStorage.getTasks).mockResolvedValue([mockTask]);
 
       await indexedStorage.init();
 
@@ -97,8 +70,6 @@ describe('IndexedStorage', () => {
         since: expect.any(Number),
       });
       expect(mockFileStorage.getAgents).toHaveBeenCalled();
-      expect(mockFileStorage.getContext).toHaveBeenCalled();
-      expect(mockFileStorage.getTasks).toHaveBeenCalled();
     });
 
     it('should handle warmup failures gracefully', async () => {
@@ -199,72 +170,6 @@ describe('IndexedStorage', () => {
     });
   });
 
-  describe('Context Operations', () => {
-    it('should save and cache contexts', async () => {
-      vi.mocked(mockFileStorage.saveContext).mockResolvedValue();
-
-      await indexedStorage.saveContext(mockContext);
-
-      expect(mockFileStorage.saveContext).toHaveBeenCalledWith(mockContext);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.writes).toBe(1);
-      expect(stats.cacheSize.contexts).toBe(1);
-    });
-
-    it('should retrieve contexts from cache with namespace filtering', async () => {
-      const namespacedContext = { ...mockContext, namespace: 'test-namespace' };
-
-      vi.mocked(mockFileStorage.saveContext).mockResolvedValue();
-
-      await indexedStorage.saveContext(namespacedContext);
-
-      const contexts = await indexedStorage.getContext(undefined, 'test-namespace');
-
-      expect(Object.keys(contexts)).toHaveLength(1);
-      expect(contexts['test-key']).toEqual(namespacedContext);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.indexHits).toBe(1);
-    });
-
-    it('should handle TTL expiration for contexts', async () => {
-      const expiredContext = {
-        ...mockContext,
-        ttl: 1000,
-        timestamp: Date.now() - 2000,
-      };
-
-      vi.mocked(mockFileStorage.saveContext).mockResolvedValue();
-
-      await indexedStorage.saveContext(expiredContext);
-
-      const contexts = await indexedStorage.getContext('test-key');
-
-      expect(Object.keys(contexts)).toHaveLength(0);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.hits).toBe(1); // Cache hit but expired
-    });
-
-    it('should retrieve single key contexts from cache', async () => {
-      vi.mocked(mockFileStorage.saveContext).mockResolvedValue();
-
-      await indexedStorage.saveContext(mockContext);
-
-      const contexts = await indexedStorage.getContext('test-key');
-
-      expect(contexts['test-key']).toEqual(mockContext);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.hits).toBe(1);
-    });
-  });
-
   describe('Agent Operations', () => {
     it('should save and cache agents', async () => {
       vi.mocked(mockFileStorage.saveAgent).mockResolvedValue();
@@ -342,49 +247,6 @@ describe('IndexedStorage', () => {
       const agents = await indexedStorage.getAgents('agent-1');
 
       expect(agents[0].role).toBe('Updated Agent');
-    });
-  });
-
-  describe('Task Operations', () => {
-    it('should save and cache tasks', async () => {
-      vi.mocked(mockFileStorage.saveTask).mockResolvedValue();
-
-      await indexedStorage.saveTask(mockTask);
-
-      expect(mockFileStorage.saveTask).toHaveBeenCalledWith(mockTask);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.writes).toBe(1);
-      expect(stats.cacheSize.tasks).toBe(1);
-    });
-
-    it('should retrieve tasks by agent from index', async () => {
-      vi.mocked(mockFileStorage.saveTask).mockResolvedValue();
-
-      await indexedStorage.saveTask(mockTask);
-
-      const tasks = await indexedStorage.getTasks('agent1');
-
-      expect(tasks).toHaveLength(1);
-      expect(tasks[0].id).toBe('task-1');
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.indexHits).toBe(1);
-    });
-
-    it('should fall back to file storage for task queries', async () => {
-      vi.mocked(mockFileStorage.getTasks).mockResolvedValue([mockTask]);
-
-      const tasks = await indexedStorage.getTasks('agent2');
-
-      expect(mockFileStorage.getTasks).toHaveBeenCalledWith('agent2');
-      expect(tasks).toHaveLength(1);
-
-      const stats = indexedStorage.getCacheStats();
-
-      expect(stats.misses).toBe(1);
     });
   });
 
@@ -488,8 +350,6 @@ describe('IndexedStorage', () => {
       vi.mocked(shortTtlFileStorage.init).mockResolvedValue();
       vi.mocked(shortTtlFileStorage.getMessages).mockResolvedValue([]);
       vi.mocked(shortTtlFileStorage.getAgents).mockResolvedValue([]);
-      vi.mocked(shortTtlFileStorage.getContext).mockResolvedValue({});
-      vi.mocked(shortTtlFileStorage.getTasks).mockResolvedValue([]);
       vi.mocked(shortTtlFileStorage.saveMessage).mockResolvedValue();
       vi.mocked(shortTtlFileStorage.getMessage).mockResolvedValue(mockMessage);
 
@@ -581,9 +441,7 @@ describe('IndexedStorage', () => {
       const stats = indexedStorage.getCacheStats();
 
       expect(stats.cacheSize.messages).toBe(0);
-      expect(stats.cacheSize.contexts).toBe(0);
       expect(stats.cacheSize.agents).toBe(0);
-      expect(stats.cacheSize.tasks).toBe(0);
 
       consoleSpy.mockRestore();
       consoleLogSpy.mockRestore();
@@ -601,8 +459,6 @@ describe('IndexedStorage', () => {
       vi.mocked(failingFileStorage.init).mockResolvedValue();
       vi.mocked(failingFileStorage.getMessages).mockResolvedValue([]);
       vi.mocked(failingFileStorage.getAgents).mockResolvedValue([]);
-      vi.mocked(failingFileStorage.getContext).mockResolvedValue({});
-      vi.mocked(failingFileStorage.getTasks).mockResolvedValue([]);
 
       await failingStorage.init();
 
