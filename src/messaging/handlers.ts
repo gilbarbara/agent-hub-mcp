@@ -78,16 +78,5 @@ export function createMessageHandlers(
 
       return result;
     },
-
-    async sync_request(arguments_: any) {
-      const result = await messageService.sendSyncRequest(
-        arguments_.from as string,
-        arguments_.to as string,
-        arguments_.topic as string,
-        arguments_.timeout as number,
-      );
-
-      return result;
-    },
   };
 }

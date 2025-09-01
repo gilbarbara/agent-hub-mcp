@@ -10,7 +10,6 @@ export enum MessageType {
   QUESTION = 'question',
   COMPLETION = 'completion',
   ERROR = 'error',
-  SYNC_REQUEST = 'sync_request',
 }
 
 export interface AgentRegistration {
@@ -35,24 +34,4 @@ export interface Message {
   timestamp: number;
   to: 'all' | (string & {});
   type: MessageType;
-}
-
-export interface SharedContext {
-  key: string;
-  namespace?: string;
-  timestamp: number;
-  ttl?: number;
-  updatedBy: string;
-  value: any;
-  version: number;
-}
-
-export interface TaskStatus {
-  agent: string;
-  dependencies?: string[];
-  details?: string;
-  id: string;
-  status: 'started' | 'in-progress' | 'completed' | 'blocked';
-  task: string;
-  timestamp: number;
 }

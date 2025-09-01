@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 
-import { ContextService } from './context/service';
+import { AgentService } from './agents/service';
+import { FeaturesService } from './features/service';
 import { MessageService } from './messaging/service';
 import { createHttpServer } from './servers/http';
 import { FileStorage, IndexedStorage, StorageAdapter } from './storage';
-import { TaskService } from './tasks/service';
 
 // Choose storage implementation based on environment variable
 function createStorage(): StorageAdapter {
@@ -28,15 +28,14 @@ async function main() {
 
   // Initialize services
   const messageService = new MessageService(storage);
-  const contextService = new ContextService(storage);
-  const taskService = new TaskService(storage);
+  const featuresService = new FeaturesService(storage);
+  const agentService = new AgentService(storage, featuresService, messageService);
 
   // Create HTTP server with all dependencies
   const app = createHttpServer({
     storage,
     messageService,
-    contextService,
-    taskService,
+    agentService,
   });
 
   // Start server

@@ -5,14 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileStorage } from '~/storage/file-storage';
 
-import {
-  AgentRegistration,
-  Message,
-  MessagePriority,
-  MessageType,
-  SharedContext,
-  TaskStatus,
-} from '~/types';
+import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
 
 vi.mock('fs/promises');
 
@@ -35,17 +28,14 @@ describe('FileStorage', () => {
 
       await storage.init();
 
-      expect(fs.mkdir).toHaveBeenCalledTimes(4);
+      expect(fs.mkdir).toHaveBeenCalledTimes(3);
       expect(fs.mkdir).toHaveBeenCalledWith(path.join(testDataDirectory, 'messages'), {
-        recursive: true,
-      });
-      expect(fs.mkdir).toHaveBeenCalledWith(path.join(testDataDirectory, 'context'), {
         recursive: true,
       });
       expect(fs.mkdir).toHaveBeenCalledWith(path.join(testDataDirectory, 'agents'), {
         recursive: true,
       });
-      expect(fs.mkdir).toHaveBeenCalledWith(path.join(testDataDirectory, 'tasks'), {
+      expect(fs.mkdir).toHaveBeenCalledWith(path.join(testDataDirectory, 'features'), {
         recursive: true,
       });
     });
@@ -104,46 +94,6 @@ describe('FileStorage', () => {
     });
   });
 
-  describe('context', () => {
-    const mockContext: SharedContext = {
-      key: 'test-key',
-      value: { data: 'test' },
-      version: 1,
-      updatedBy: 'agent1',
-      timestamp: Date.now(),
-    };
-
-    it('should save context', async () => {
-      vi.mocked(fs.writeFile).mockResolvedValue();
-
-      await storage.saveContext(mockContext);
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        path.join(testDataDirectory, 'context', 'test-key.json'),
-        JSON.stringify(mockContext, null, 2),
-      );
-    });
-
-    it('should get context with TTL check', async () => {
-      const expiredContext = { ...mockContext, ttl: 1000, timestamp: Date.now() - 2000 };
-      const validContext = { ...mockContext, key: 'valid-key', ttl: 10000, timestamp: Date.now() };
-
-      vi.mocked(fs.readdir).mockResolvedValue(['expired.json', 'valid.json'] as any);
-      vi.mocked(fs.readFile).mockImplementation(filePath => {
-        if (filePath.toString().includes('expired')) {
-          return Promise.resolve(JSON.stringify(expiredContext));
-        }
-
-        return Promise.resolve(JSON.stringify(validContext));
-      });
-
-      const contexts = await storage.getContext();
-
-      expect(Object.keys(contexts)).toHaveLength(1);
-      expect(contexts['valid-key']).toBeDefined();
-    });
-  });
-
   describe('agents', () => {
     const mockAgent: AgentRegistration = {
       id: 'agent1',
@@ -174,43 +124,6 @@ describe('FileStorage', () => {
 
       expect(agents).toHaveLength(1);
       expect(agents[0].id).toBe('agent1');
-    });
-  });
-
-  describe('tasks', () => {
-    const mockTask: TaskStatus = {
-      id: 'task1',
-      agent: 'agent1',
-      task: 'Test task',
-      status: 'in-progress',
-      timestamp: Date.now(),
-    };
-
-    it('should save a task', async () => {
-      vi.mocked(fs.writeFile).mockResolvedValue();
-
-      await storage.saveTask(mockTask);
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        path.join(testDataDirectory, 'tasks', 'task1.json'),
-        JSON.stringify(mockTask, null, 2),
-      );
-    });
-
-    it('should get tasks filtered by agent', async () => {
-      vi.mocked(fs.readdir).mockResolvedValue(['task1.json', 'task2.json'] as any);
-      vi.mocked(fs.readFile).mockImplementation(filePath => {
-        if (filePath.toString().includes('task1')) {
-          return Promise.resolve(JSON.stringify(mockTask));
-        }
-
-        return Promise.resolve(JSON.stringify({ ...mockTask, agent: 'agent2' }));
-      });
-
-      const tasks = await storage.getTasks('agent1');
-
-      expect(tasks).toHaveLength(1);
-      expect(tasks[0].agent).toBe('agent1');
     });
   });
 

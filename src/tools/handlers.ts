@@ -4,27 +4,24 @@ import { createId } from '@paralleldrive/cuid2';
 
 import { createAgentFromProjectPath } from '~/agents/detection';
 import { sendWelcomeMessage } from '~/agents/registration';
+import { AgentService } from '~/agents/service';
 import { AgentSession } from '~/agents/session';
-import { createContextHandlers } from '~/context/handlers';
-import { ContextService } from '~/context/service';
+import { FeaturesHandler } from '~/features/handlers';
 import { createMessageHandlers } from '~/messaging/handlers';
 import { MessageService } from '~/messaging/service';
 import { StorageAdapter } from '~/storage';
-import { createTaskHandlers } from '~/tasks/handlers';
-import { TaskService } from '~/tasks/service';
 import { validateToolInput } from '~/validation';
 
 import { AgentRegistration } from '~/types';
 
 export interface ToolHandlerServices {
+  agentService: AgentService;
   broadcastNotification: (method: string, params: any) => Promise<void>;
-  contextService: ContextService;
   getCurrentSession: () => AgentSession | undefined;
   messageService: MessageService;
   sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
   storage: StorageAdapter;
-  taskService: TaskService;
 }
 
 export function createToolHandlers(services: ToolHandlerServices) {
@@ -34,8 +31,7 @@ export function createToolHandlers(services: ToolHandlerServices) {
     services.sendNotificationToAgent,
     services.sendResourceNotification,
   );
-  const contextHandlers = createContextHandlers(services.contextService);
-  const taskHandlers = createTaskHandlers(services.taskService);
+  const featuresHandler = new FeaturesHandler(services.storage);
 
   return {
     async send_message(arguments_: any) {
@@ -49,27 +45,6 @@ export function createToolHandlers(services: ToolHandlerServices) {
       const validatedArguments = validateToolInput('get_messages', arguments_);
 
       return messageHandlers.get_messages(validatedArguments);
-    },
-
-    async set_context(arguments_: any) {
-      const validatedArguments = validateToolInput('set_context', arguments_);
-      const result = await contextHandlers.set_context(validatedArguments);
-
-      // Broadcast context update notification
-      // The notification service will convert this to MCP's sendResourceListChanged
-      await services.broadcastNotification('context_updated', {
-        key: validatedArguments.key,
-        namespace: validatedArguments.namespace,
-        version: result.version,
-      });
-
-      return result;
-    },
-
-    async get_context(arguments_: any) {
-      const validatedArguments = validateToolInput('get_context', arguments_);
-
-      return contextHandlers.get_context(validatedArguments);
     },
 
     async register_agent(arguments_: any) {
@@ -151,42 +126,83 @@ export function createToolHandlers(services: ToolHandlerServices) {
       };
     },
 
-    async update_task_status(arguments_: any) {
-      const validatedArguments = validateToolInput('update_task_status', arguments_);
-      const result = await taskHandlers.update_task_status(validatedArguments);
+    async get_agent_status(arguments_: any) {
+      const validatedArguments = validateToolInput('get_agent_status', arguments_);
 
-      // Broadcast task update notification
-      // The notification service will convert this to MCP's sendResourceListChanged
-      await services.broadcastNotification('task_updated', {
-        agent: validatedArguments.agent,
-        task: validatedArguments.task,
-        status: validatedArguments.status,
-      });
+      return services.agentService.getAgentStatus(validatedArguments.agent);
+    },
+
+    // Features system tools
+    async create_feature(arguments_: any) {
+      const result = await featuresHandler.handleFeatureTool('create_feature', arguments_);
+
+      // Broadcast feature creation notification
+      if (result.success) {
+        await services.broadcastNotification('feature_created', {
+          feature: result.feature,
+        });
+      }
 
       return result;
     },
 
-    async get_agent_status(arguments_: any) {
-      const validatedArguments = validateToolInput('get_agent_status', arguments_);
+    async create_task(arguments_: any) {
+      const result = await featuresHandler.handleFeatureTool('create_task', arguments_);
 
-      return taskHandlers.get_agent_status(validatedArguments);
+      // Broadcast task creation notification
+      if (result.success) {
+        await services.broadcastNotification('task_created', {
+          featureId: arguments_.featureId,
+          task: result.task,
+          delegations: result.delegations,
+        });
+      }
+
+      return result;
     },
 
-    async start_collaboration(arguments_: any) {
-      const validatedArguments = validateToolInput('start_collaboration', arguments_);
-
-      return taskHandlers.start_collaboration(validatedArguments);
+    async create_subtask(arguments_: any) {
+      return featuresHandler.handleFeatureTool('create_subtask', arguments_);
     },
 
-    async sync_request(arguments_: any) {
-      const validatedArguments = validateToolInput('sync_request', arguments_);
-      const result = await messageHandlers.sync_request(validatedArguments);
+    async get_agent_workload(arguments_: any) {
+      return featuresHandler.handleFeatureTool('get_agent_workload', arguments_);
+    },
 
-      // Send instant notification for sync request
-      await services.sendNotificationToAgent(validatedArguments.to, 'sync_request', {
-        from: validatedArguments.from,
-        topic: validatedArguments.topic,
-      });
+    async get_features(arguments_: any) {
+      return featuresHandler.handleFeatureTool('get_features', arguments_);
+    },
+
+    async get_feature(arguments_: any) {
+      return featuresHandler.handleFeatureTool('get_feature', arguments_);
+    },
+
+    async accept_delegation(arguments_: any) {
+      const result = await featuresHandler.handleFeatureTool('accept_delegation', arguments_);
+
+      // Broadcast delegation acceptance notification
+      if (result.success) {
+        await services.broadcastNotification('delegation_accepted', {
+          featureId: arguments_.featureId,
+          delegationId: arguments_.delegationId,
+          agentId: arguments_.agentId,
+        });
+      }
+
+      return result;
+    },
+
+    async update_subtask(arguments_: any) {
+      const result = await featuresHandler.handleFeatureTool('update_subtask', arguments_);
+
+      // Broadcast subtask update notification
+      if (result.success) {
+        await services.broadcastNotification('subtask_updated', {
+          featureId: arguments_.featureId,
+          subtaskId: arguments_.subtaskId,
+          status: arguments_.status,
+        });
+      }
 
       return result;
     },

@@ -82,47 +82,6 @@ export class MessageService {
     };
   }
 
-  async sendSyncRequest(
-    from: string,
-    to: string,
-    topic: string,
-    timeout = 30000,
-  ): Promise<{ response?: string; timeout?: boolean }> {
-    const syncMessage: Message = {
-      id: createId(),
-      from,
-      to,
-      type: MessageType.SYNC_REQUEST,
-      content: topic,
-      timestamp: Date.now(),
-      read: false,
-      priority: MessagePriority.URGENT,
-    };
-
-    await this.storage.saveMessage(syncMessage);
-
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-      await new Promise(resolve => {
-        setTimeout(resolve, 1000);
-      });
-
-      const responses = await this.storage.getMessages({
-        agent: from,
-        since: syncMessage.timestamp,
-      });
-
-      const response = responses.find(m => m.from === to && m.threadId === syncMessage.id);
-
-      if (response) {
-        return { response: response.content };
-      }
-    }
-
-    return { timeout: true };
-  }
-
   async getMessageById(messageId: string): Promise<Message | undefined> {
     return this.storage.getMessage(messageId);
   }

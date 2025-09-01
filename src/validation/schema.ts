@@ -1,4 +1,4 @@
-import Ajv, { JSONSchemaType } from 'ajv';
+import Ajv from 'ajv';
 
 import { TOOLS } from '~/tools/definitions';
 
@@ -18,34 +18,6 @@ for (const tool of TOOLS) {
   const validator = ajv.compile(tool.inputSchema);
 
   validators.set(tool.name, validator);
-}
-
-/**
- * Gets all available tool names
- * @returns Array of tool names
- */
-export function getAvailableTools(): string[] {
-  return TOOLS.map(tool => tool.name);
-}
-
-/**
- * Gets the schema for a specific tool
- * @param toolName - Name of the tool
- * @returns The JSON schema for the tool's input
- */
-export function getToolSchema(toolName: string): JSONSchemaType<any> | undefined {
-  const tool = TOOLS.find(t => t.name === toolName);
-
-  return tool?.inputSchema as JSONSchemaType<any>;
-}
-
-/**
- * Checks if a tool exists
- * @param toolName - Name of the tool to check
- * @returns True if the tool exists, false otherwise
- */
-export function toolExists(toolName: string): boolean {
-  return validators.has(toolName);
 }
 
 /**

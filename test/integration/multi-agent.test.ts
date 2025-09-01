@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContextService } from '~/context/service';
+import { AgentService } from '~/agents/service';
+import { FeaturesService } from '~/features/service';
 import { MessageService } from '~/messaging/service';
 import { FileStorage } from '~/storage';
-import { TaskService } from '~/tasks/service';
 import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';
 
-import { AgentRegistration, Message, MessagePriority, MessageType, TaskStatus } from '~/types';
+import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
 
 // Mock createId to make tests deterministic but unique
 vi.mock('@paralleldrive/cuid2', () => {
@@ -20,8 +20,8 @@ vi.mock('@paralleldrive/cuid2', () => {
 describe('Multi-Agent Integration Tests', () => {
   let storage: FileStorage;
   let messageService: MessageService;
-  let contextService: ContextService;
-  let taskService: TaskService;
+  let featuresService: FeaturesService;
+  let agentService: AgentService;
   let toolHandlers: any;
 
   // Mock agent sessions
@@ -58,8 +58,8 @@ describe('Multi-Agent Integration Tests', () => {
     await storage.init();
 
     messageService = new MessageService(storage);
-    contextService = new ContextService(storage);
-    taskService = new TaskService(storage);
+    featuresService = new FeaturesService(storage);
+    agentService = new AgentService(storage, featuresService, messageService);
 
     // Mock session for testing
     const mockSession = {
@@ -69,8 +69,7 @@ describe('Multi-Agent Integration Tests', () => {
     const services: ToolHandlerServices = {
       storage,
       messageService,
-      contextService,
-      taskService,
+      agentService,
       getCurrentSession: () => mockSession,
       broadcastNotification: vi.fn().mockResolvedValue(undefined),
       sendNotificationToAgent: vi.fn().mockResolvedValue(undefined),
@@ -106,13 +105,17 @@ describe('Multi-Agent Integration Tests', () => {
     });
 
     it('should discover active agents for collaboration', async () => {
-      const collaborationResult = await toolHandlers.start_collaboration({
-        feature: 'user-authentication',
+      const collaborationResult = await toolHandlers.create_feature({
+        name: 'user-authentication',
+        title: 'User Authentication System',
+        description: 'Implement login and registration functionality',
+        createdBy: 'product-manager',
+        estimatedAgents: ['frontend-agent', 'backend-agent'],
       });
 
-      expect(collaborationResult.agent).toBeDefined();
-      expect(collaborationResult.activeAgents).toContain('frontend-agent');
-      expect(collaborationResult.activeAgents).toContain('backend-agent');
+      expect(collaborationResult.success).toBe(true);
+      expect(collaborationResult.feature).toBeDefined();
+      expect(collaborationResult.feature.id).toBe('user-authentication');
     });
   });
 
@@ -188,195 +191,67 @@ describe('Multi-Agent Integration Tests', () => {
       expect(frontendMessages.messages[0].content).toContain('maintenance');
       expect(backendMessages.messages[0].content).toContain('maintenance');
     });
-
-    it('should support synchronous request-response pattern', async () => {
-      let syncRequestId: string | undefined;
-
-      // Mock the storage to capture sync request ID and simulate response
-      vi.spyOn(storage, 'saveMessage').mockImplementation(async message => {
-        if (message.type === MessageType.SYNC_REQUEST) {
-          syncRequestId = message.id;
-        }
-      });
-
-      vi.spyOn(storage, 'getMessages').mockImplementation(async options => {
-        // Simulate response message appearing after sync request
-        if (options?.since && syncRequestId) {
-          const responseMessage: Message = {
-            id: 'response-msg',
-            from: 'backend-agent',
-            to: 'frontend-agent',
-            type: MessageType.CONTEXT,
-            content: 'Database schema has users, sessions, and roles tables',
-            timestamp: Date.now(),
-            read: false,
-            priority: MessagePriority.NORMAL,
-            threadId: syncRequestId, // Match the sync request ID
-          };
-
-          return [responseMessage];
-        }
-
-        return [];
-      });
-
-      // Mock setTimeout to resolve immediately for testing
-      vi.spyOn(global, 'setTimeout').mockImplementation((fn: any) => {
-        fn();
-
-        return {} as any;
-      });
-
-      const syncResult = await toolHandlers.sync_request({
-        from: 'frontend-agent',
-        to: 'backend-agent',
-        topic: 'What is the current database schema?',
-        timeout: 5000,
-      });
-
-      expect(syncResult.response).toContain('Database schema');
-    });
-  });
-
-  describe('Shared Context Coordination', () => {
-    it('should share API specifications between frontend and backend', async () => {
-      // Backend shares API specification
-      await toolHandlers.set_context({
-        key: 'api:user-auth',
-        value: {
-          version: '1.0',
-          baseUrl: '/api/v1',
-          endpoints: {
-            login: { method: 'POST', path: '/auth/login', params: ['email', 'password'] },
-            register: {
-              method: 'POST',
-              path: '/auth/register',
-              params: ['email', 'password', 'name'],
-            },
-            profile: { method: 'GET', path: '/auth/profile', headers: ['Authorization'] },
-          },
-          responses: {
-            login: { success: { token: 'string', user: 'object' }, error: { message: 'string' } },
-          },
-        },
-        agent: 'backend-agent',
-        namespace: 'api-specs',
-      });
-
-      // Frontend retrieves the API specification
-      const contextResult = await toolHandlers.get_context({
-        key: 'api:user-auth',
-        namespace: 'api-specs',
-      });
-
-      expect(contextResult['api:user-auth']).toBeDefined();
-      expect(contextResult['api:user-auth'].endpoints.login.method).toBe('POST');
-      expect(contextResult['api:user-auth'].endpoints.login.path).toBe('/auth/login');
-    });
-
-    it('should coordinate feature flags across agents', async () => {
-      // Product manager sets feature flags
-      await toolHandlers.set_context({
-        key: 'features:authentication',
-        value: {
-          socialLogin: true,
-          twoFactorAuth: false,
-          passwordReset: true,
-          emailVerification: true,
-        },
-        agent: 'product-manager',
-        namespace: 'feature-flags',
-      });
-
-      // Multiple agents read feature flags
-      const frontendContext = await toolHandlers.get_context({
-        namespace: 'feature-flags',
-      });
-
-      const backendContext = await toolHandlers.get_context({
-        namespace: 'feature-flags',
-      });
-
-      expect(frontendContext['features:authentication'].socialLogin).toBe(true);
-      expect(backendContext['features:authentication'].twoFactorAuth).toBe(false);
-      expect(frontendContext['features:authentication']).toEqual(
-        backendContext['features:authentication'],
-      );
-    });
-
-    it('should handle context versioning for concurrent updates', async () => {
-      // Initial configuration by backend
-      const initialResult = await toolHandlers.set_context({
-        key: 'config:database',
-        value: { host: 'localhost', port: 5432, ssl: false },
-        agent: 'backend-agent',
-        namespace: 'infrastructure',
-      });
-
-      expect(initialResult.version).toBe(1);
-
-      // DevOps updates configuration
-      const updateResult = await toolHandlers.set_context({
-        key: 'config:database',
-        value: { host: 'prod-db.company.com', port: 5432, ssl: true },
-        agent: 'devops-agent',
-        namespace: 'infrastructure',
-      });
-
-      expect(updateResult.version).toBe(2);
-
-      // Backend reads latest configuration
-      const latestConfig = await toolHandlers.get_context({
-        key: 'config:database',
-        namespace: 'infrastructure',
-      });
-
-      expect(latestConfig['config:database'].host).toBe('prod-db.company.com');
-      expect(latestConfig['config:database'].ssl).toBe(true);
-    });
   });
 
   describe('Task Coordination', () => {
     it('should coordinate feature development across agents', async () => {
-      // Frontend starts UI task
-      await toolHandlers.update_task_status({
+      // Frontend announces UI task start
+      await toolHandlers.send_message({
+        from: 'frontend-agent',
+        to: 'all',
+        type: 'task',
+        content:
+          'Started: Build user authentication UI - Creating login and registration forms (depends on api:user-auth)',
+        metadata: { task: 'ui-auth', status: 'started', dependencies: ['api:user-auth'] },
+      });
+
+      // Backend announces API task progress
+      await toolHandlers.send_message({
+        from: 'backend-agent',
+        to: 'all',
+        type: 'task',
+        content:
+          'In Progress: Implement authentication endpoints - JWT token generation and validation (depends on database:user-schema)',
+        metadata: {
+          task: 'api-auth',
+          status: 'in-progress',
+          dependencies: ['database:user-schema'],
+        },
+      });
+
+      // Verify task coordination via messages
+      const frontendMessages = await toolHandlers.get_messages({
         agent: 'frontend-agent',
-        task: 'Build user authentication UI',
-        status: 'started',
-        details: 'Creating login and registration forms',
-        dependencies: ['api:user-auth'],
+        markAsRead: false,
       });
-
-      // Backend starts API task
-      await toolHandlers.update_task_status({
+      const backendMessages = await toolHandlers.get_messages({
         agent: 'backend-agent',
-        task: 'Implement authentication endpoints',
-        status: 'in-progress',
-        details: 'JWT token generation and validation',
-        dependencies: ['database:user-schema'],
+        markAsRead: false,
       });
 
-      // Get overall project status
-      const statusResult = await toolHandlers.get_agent_status({});
-
-      expect(statusResult.tasks).toHaveLength(2);
-
-      const frontendTask = statusResult.tasks.find((t: TaskStatus) => t.agent === 'frontend-agent');
-      const backendTask = statusResult.tasks.find((t: TaskStatus) => t.agent === 'backend-agent');
-
-      expect(frontendTask.status).toBe('started');
-      expect(backendTask.status).toBe('in-progress');
-      expect(frontendTask.dependencies).toContain('api:user-auth');
-      expect(backendTask.dependencies).toContain('database:user-schema');
+      expect(frontendMessages.count).toBe(2); // Sent frontend message + received backend message
+      expect(backendMessages.count).toBe(2); // Sent backend message + received frontend message
+      expect(
+        frontendMessages.messages.some((m: Message) =>
+          m.content.includes('Started: Build user authentication UI'),
+        ),
+      ).toBe(true);
+      expect(
+        backendMessages.messages.some((m: Message) =>
+          m.content.includes('In Progress: Implement authentication endpoints'),
+        ),
+      ).toBe(true);
     });
 
     it('should track task completion and notify dependent agents', async () => {
-      // Backend completes API task
-      await toolHandlers.update_task_status({
-        agent: 'backend-agent',
-        task: 'Authentication API implementation',
-        status: 'completed',
-        details: 'All endpoints tested and deployed to staging',
+      // Backend completes API task and announces completion
+      await toolHandlers.send_message({
+        from: 'backend-agent',
+        to: 'all',
+        type: 'completion',
+        content:
+          'Completed: Authentication API implementation - All endpoints tested and deployed to staging',
+        metadata: { task: 'api-auth', status: 'completed' },
       });
 
       // Send notification to dependent agents
@@ -393,12 +268,13 @@ describe('Multi-Agent Integration Tests', () => {
       });
 
       // Frontend acknowledges and starts integration
-      await toolHandlers.update_task_status({
-        agent: 'frontend-agent',
-        task: 'Integrate with authentication API',
-        status: 'started',
-        details: 'Using staging URL for development integration',
-        dependencies: ['Authentication API implementation'],
+      await toolHandlers.send_message({
+        from: 'frontend-agent',
+        to: 'backend-agent',
+        type: 'task',
+        content:
+          'Started: Integrate with authentication API - Using staging URL for development integration',
+        metadata: { task: 'ui-integration', status: 'started', dependencies: ['api-auth'] },
       });
 
       const messages = await toolHandlers.get_messages({
@@ -406,9 +282,18 @@ describe('Multi-Agent Integration Tests', () => {
         markAsRead: false,
       });
 
-      expect(messages.count).toBe(1);
-      expect(messages.messages[0].metadata.task).toBe('Authentication API implementation');
-      expect(messages.messages[0].metadata.stagingUrl).toBe('https://api-staging.company.com');
+      expect(messages.count).toBe(2); // Received completion from backend + sent integration start message
+      expect(
+        messages.messages.some((m: Message) =>
+          m.content.includes('Completed: Authentication API implementation'),
+        ),
+      ).toBe(true);
+      expect(messages.messages.some((m: Message) => m.metadata?.task === 'api-auth')).toBe(true);
+      expect(
+        messages.messages.some(
+          (m: Message) => m.metadata?.stagingUrl === 'https://api-staging.company.com',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -423,13 +308,14 @@ describe('Multi-Agent Integration Tests', () => {
 
       await storage.saveAgent(offlineAgent);
 
-      // Check collaboration status
-      const collaborationResult = await toolHandlers.start_collaboration({
-        feature: 'user-management',
-      });
+      // Test agent status instead of collaboration
+      const statusResult = await toolHandlers.get_agent_status({});
+      const activeAgents = statusResult.agents.filter(
+        (a: any) => Date.now() - a.lastSeen < 5 * 60 * 1000, // Active within 5 minutes
+      );
 
-      expect(collaborationResult.activeAgents).not.toContain('backend-agent');
-      expect(collaborationResult.activeAgents).toContain('frontend-agent');
+      expect(activeAgents.some((a: any) => a.id.includes('backend'))).toBe(false); // Backend offline
+      expect(activeAgents.some((a: any) => a.id.includes('frontend'))).toBe(true); // Frontend still active
     });
 
     it('should handle message delivery to offline agents', async () => {
@@ -450,77 +336,47 @@ describe('Multi-Agent Integration Tests', () => {
       expect(messages.count).toBe(1);
       expect(messages.messages[0].content).toContain('user service');
     });
-
-    it('should handle context conflicts with proper versioning', async () => {
-      // Two agents try to update the same configuration
-      const result1 = await toolHandlers.set_context({
-        key: 'config:api-rate-limits',
-        value: { perMinute: 100, perHour: 1000 },
-        agent: 'backend-agent',
-      });
-
-      const result2 = await toolHandlers.set_context({
-        key: 'config:api-rate-limits',
-        value: { perMinute: 200, perHour: 2000 },
-        agent: 'devops-agent',
-      });
-
-      // Second update should have higher version
-      expect(result1.version).toBe(1);
-      expect(result2.version).toBe(2);
-
-      // Latest value should be from second update
-      const currentConfig = await toolHandlers.get_context({
-        key: 'config:api-rate-limits',
-      });
-
-      expect(currentConfig['config:api-rate-limits'].perMinute).toBe(200);
-    });
   });
 
   describe('Complex Multi-Agent Workflows', () => {
     it('should coordinate full-stack feature development', async () => {
-      // 1. Product manager defines requirements
-      await toolHandlers.set_context({
-        key: 'feature:user-profiles',
-        value: {
-          requirements: [
-            'Users can upload profile pictures',
-            'Users can set privacy preferences',
-            'Users can connect social accounts',
-          ],
-          acceptance_criteria: [
-            'Image upload with validation',
-            'Privacy toggle for profile visibility',
-            'OAuth integration for social login',
-          ],
-        },
-        agent: 'product-manager',
-        namespace: 'requirements',
+      // 1. Product manager defines requirements via message
+      await toolHandlers.send_message({
+        from: 'product-manager',
+        to: 'all',
+        type: 'context',
+        content:
+          'Feature requirements for user profiles: Users can upload profile pictures, set privacy preferences, and connect social accounts. Acceptance criteria: Image upload with validation, privacy toggle, OAuth integration.',
       });
 
       // 2. Backend agent starts database design
-      await toolHandlers.update_task_status({
-        agent: 'backend-agent',
-        task: 'Design user profiles database schema',
-        status: 'started',
-        details: 'Creating tables for profiles, images, and social connections',
+      await toolHandlers.send_message({
+        from: 'backend-agent',
+        to: 'all',
+        type: 'task',
+        content:
+          'Started: Design user profiles database schema - Creating tables for profiles, images, and social connections',
+        metadata: { task: 'db-schema', status: 'started' },
       });
 
       // 3. Frontend agent starts UI mockups
-      await toolHandlers.update_task_status({
-        agent: 'frontend-agent',
-        task: 'Create user profile UI mockups',
-        status: 'started',
-        details: 'Designing profile page with image upload component',
+      await toolHandlers.send_message({
+        from: 'frontend-agent',
+        to: 'all',
+        type: 'task',
+        content:
+          'Started: Create user profile UI mockups - Designing profile page with image upload component',
+        metadata: { task: 'ui-mockups', status: 'started' },
       });
 
       // 4. Backend completes schema and notifies frontend
-      await toolHandlers.update_task_status({
-        agent: 'backend-agent',
-        task: 'Design user profiles database schema',
-        status: 'completed',
-        details: 'Schema includes users, profiles, images, and social_accounts tables',
+      await toolHandlers.send_message({
+        from: 'backend-agent',
+        to: 'all',
+        type: 'completion',
+        content:
+          'Completed: Design user profiles database schema - Schema includes users, profiles, images, and social_accounts tables',
+        metadata: { task: 'db-schema', status: 'completed' },
       });
 
       await toolHandlers.send_message({
@@ -530,56 +386,43 @@ describe('Multi-Agent Integration Tests', () => {
         content: 'Database schema is ready - check shared context for API specifications',
       });
 
-      // 5. Backend shares API specification
-      await toolHandlers.set_context({
-        key: 'api:user-profiles',
-        value: {
-          endpoints: {
-            getProfile: 'GET /api/users/{id}/profile',
-            updateProfile: 'PUT /api/users/{id}/profile',
-            uploadImage: 'POST /api/users/{id}/profile/image',
-            connectSocial: 'POST /api/users/{id}/social',
-          },
-          models: {
-            profile: {
-              id: 'string',
-              userId: 'string',
-              displayName: 'string',
-              bio: 'string',
-              imageUrl: 'string',
-              privacy: 'public|private',
-              socialAccounts: 'array',
-            },
-          },
-        },
-        agent: 'backend-agent',
-        namespace: 'api-specs',
+      // 5. Backend shares API specification via message
+      await toolHandlers.send_message({
+        from: 'backend-agent',
+        to: 'frontend-agent',
+        type: 'context',
+        content:
+          'API specification ready: GET /api/users/{id}/profile, PUT /api/users/{id}/profile, POST /api/users/{id}/profile/image, POST /api/users/{id}/social. Profile model includes id, userId, displayName, bio, imageUrl, privacy (public|private), socialAccounts array.',
       });
 
       // 6. Frontend integrates with API
-      await toolHandlers.update_task_status({
-        agent: 'frontend-agent',
-        task: 'Implement profile page integration',
-        status: 'in-progress',
-        details: 'Connecting UI components to backend API',
-        dependencies: ['Design user profiles database schema'],
+      await toolHandlers.send_message({
+        from: 'frontend-agent',
+        to: 'all',
+        type: 'task',
+        content:
+          'In Progress: Implement profile page integration - Connecting UI components to backend API',
+        metadata: {
+          task: 'profile-integration',
+          status: 'in-progress',
+          dependencies: ['db-schema'],
+        },
       });
 
-      // Verify the complete workflow
-      const tasks = await toolHandlers.get_agent_status({});
-      const apiSpec = await toolHandlers.get_context({
-        key: 'api:user-profiles',
-        namespace: 'api-specs',
-      });
+      // Verify the complete workflow via messages
       const messages = await toolHandlers.get_messages({
         agent: 'frontend-agent',
         markAsRead: false,
       });
 
-      expect(tasks.tasks).toHaveLength(4); // 4 task status updates: start schema, start mockups, complete schema, start integration
-      expect(apiSpec['api:user-profiles'].endpoints.getProfile).toBeDefined();
-      expect(messages.count).toBe(1);
-      expect(messages.messages[0].content).toContain('schema is ready');
+      // Verify message-based coordination instead of task status
+      expect(messages.count).toBe(7); // requirements, backend tasks, API spec, and frontend integration (all broadcasted to 'all')
+      expect(messages.messages.some((m: Message) => m.content.includes('schema is ready'))).toBe(
+        true,
+      );
+      expect(
+        messages.messages.some((m: Message) => m.content.includes('API specification ready')),
+      ).toBe(true);
     });
 
     it('should handle crisis communication during outages', async () => {
@@ -614,20 +457,14 @@ describe('Multi-Agent Integration Tests', () => {
         metadata: { incident: 'DB-2024-001' },
       });
 
-      // DevOps shares resolution update
-      await toolHandlers.set_context({
-        key: 'incident:DB-2024-001',
-        value: {
-          status: 'investigating',
-          timeline: [
-            '14:32 - Connection pool exhausted',
-            '14:35 - Read-only mode activated',
-            '14:38 - User notification displayed',
-          ],
-          eta: '15:00',
-        },
-        agent: 'devops-agent',
-        namespace: 'incidents',
+      // DevOps shares resolution update via message
+      await toolHandlers.send_message({
+        from: 'devops-agent',
+        to: 'all',
+        type: 'context',
+        content:
+          'Incident DB-2024-001 update - Status: investigating. Timeline: 14:32 Connection pool exhausted, 14:35 Read-only mode activated, 14:38 User notification displayed. ETA for resolution: 15:00',
+        metadata: { incident: 'DB-2024-001' },
       });
 
       // Verify crisis communication flow
@@ -636,14 +473,11 @@ describe('Multi-Agent Integration Tests', () => {
         markAsRead: false,
       });
 
-      const incidentContext = await toolHandlers.get_context({
-        key: 'incident:DB-2024-001',
-        namespace: 'incidents',
-      });
-
-      expect(devopsMessages.count).toBe(3); // Broadcast to all + responses from backend and frontend
-      expect(incidentContext['incident:DB-2024-001'].status).toBe('investigating');
-      expect(incidentContext['incident:DB-2024-001'].timeline).toHaveLength(3);
+      expect(devopsMessages.count).toBe(4); // Updated: emergency alert + incident update + responses from backend and frontend
+      expect(
+        devopsMessages.messages.some((m: Message) => m.content.includes('investigating')),
+      ).toBe(true);
+      expect(devopsMessages.messages.some((m: Message) => m.content.includes('15:00'))).toBe(true);
     });
   });
 
@@ -700,57 +534,17 @@ describe('Multi-Agent Integration Tests', () => {
       }
     });
 
-    it('should handle context with very large values', async () => {
-      const largeArray = Array(1000)
-        .fill(0)
-        .map((_, index) => ({
-          id: index,
-          data: 'x'.repeat(100),
-          nested: {
-            value: index * 2,
-            array: [1, 2, 3, 4, 5],
-          },
-        }));
-
-      const result = await contextService.setContext('large-data', largeArray, 'test-agent', {
-        namespace: 'performance-test',
-      });
-
-      expect(result.success).toBe(true);
-
-      const retrieved = await contextService.getContext('large-data', 'performance-test');
-
-      expect(retrieved['large-data']).toHaveLength(1000);
-      expect(retrieved['large-data'][500].id).toBe(500);
-    });
-
-    it('should handle synchronous requests with timeout race conditions', async () => {
-      // Send multiple sync requests simultaneously
-      // All should timeout since no responses are sent
-      const results = await Promise.all([
-        messageService.sendSyncRequest('agent1', 'agent2', 'request1', 100),
-        messageService.sendSyncRequest('agent1', 'agent3', 'request2', 100),
-        messageService.sendSyncRequest('agent2', 'agent1', 'request3', 100),
-      ]);
-
-      results.forEach(result => {
-        expect(result.timeout).toBe(true);
-        expect(result.response).toBeUndefined();
-      });
-    });
-
     it('should maintain data consistency during concurrent operations', async () => {
       const operations = [];
 
       // Mix different types of operations
       for (let index = 0; index < 20; index++) {
-        // Context updates
+        // Mix different types of operations
         operations.push(
-          contextService.setContext(`key-${index}`, `value-${index}`, 'agent1'),
           // Message sending
           messageService.sendMessage('agent1', 'agent2', MessageType.CONTEXT, `msg-${index}`),
-          // Task updates
-          taskService.updateTaskStatus('agent1', `task-${index}`, 'started'),
+          // Agent status checks
+          agentService.getAgentStatus('agent1'),
         );
       }
 
@@ -758,66 +552,14 @@ describe('Multi-Agent Integration Tests', () => {
       const results = await Promise.all(operations);
 
       // All operations should succeed
-      expect(results).toHaveLength(60); // 20 * 3 operations
+      expect(results).toHaveLength(40); // 20 * 2 operations
 
       // Verify data integrity
-      const contexts = await contextService.getContext();
       const messages = await messageService.getMessages('agent2');
-      const tasks = await taskService.getAgentStatus('agent1');
+      const agentStatus = await agentService.getAgentStatus();
 
-      expect(Object.keys(contexts)).toHaveLength(20);
       expect(messages.messages.length).toBeGreaterThanOrEqual(20);
-      expect(tasks.tasks.length).toBeGreaterThanOrEqual(20);
-    });
-
-    it('should handle namespace collision gracefully', async () => {
-      // Multiple agents setting context with same key but different namespaces
-      await contextService.setContext('config', { version: 1 }, 'agent1', { namespace: 'app1' });
-      await contextService.setContext('config', { version: 2 }, 'agent2', { namespace: 'app2' });
-      await contextService.setContext('config', { version: 3 }, 'agent3', { namespace: 'app1' });
-
-      // Each namespace should maintain separate values
-      const app1Context = await contextService.getContext('config', 'app1');
-      const app2Context = await contextService.getContext('config', 'app2');
-
-      // Verify namespace isolation works for the retrieved namespace
-      expect(app1Context.config).toEqual({ version: 3 }); // Latest update in app1 namespace
-
-      // Note: namespace isolation may not work perfectly in current implementation
-      // Just verify we get some response structure
-      expect(typeof app2Context).toBe('object');
-    });
-
-    it('should handle TTL expiration correctly', async () => {
-      vi.useFakeTimers();
-      const now = Date.now();
-
-      vi.setSystemTime(now);
-
-      // Set context with different TTLs
-      await contextService.setContext('short-lived', 'value1', 'agent1', { ttl: 1000 });
-      await contextService.setContext('long-lived', 'value2', 'agent1', { ttl: 10000 });
-      await contextService.setContext('permanent', 'value3', 'agent1');
-
-      // Advance time past first TTL
-      vi.setSystemTime(now + 2000);
-
-      const context1 = await contextService.getContext();
-
-      expect(context1['short-lived']).toBeUndefined(); // Should be expired
-      expect(context1['long-lived']).toBe('value2');
-      expect(context1.permanent).toBe('value3');
-
-      // Advance time past second TTL
-      vi.setSystemTime(now + 11000);
-
-      const context2 = await contextService.getContext();
-
-      expect(context2['short-lived']).toBeUndefined();
-      expect(context2['long-lived']).toBeUndefined(); // Should be expired
-      expect(context2.permanent).toBe('value3'); // Should still exist
-
-      vi.useRealTimers();
+      expect(agentStatus.agents.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should handle malformed metadata gracefully', async () => {
@@ -888,24 +630,20 @@ describe('Multi-Agent Integration Tests', () => {
       expect(newMessages.messages[0].content).toBe('Message 2');
     });
 
-    it('should handle task dependencies with missing tasks', async () => {
-      // Create task with dependencies on non-existent tasks
-      const result = await taskService.updateTaskStatus('agent1', 'Dependent task', 'started', {
-        dependencies: ['non-existent-1', 'non-existent-2', 'non-existent-3'],
-        details: 'Task depends on tasks that do not exist',
-      });
+    it('should handle agent status queries gracefully', async () => {
+      // Query agent status for existing agent
+      const result = await agentService.getAgentStatus('frontend-agent');
 
-      expect(result.success).toBe(true);
+      expect(result.agents).toBeDefined();
+      expect(result.features).toBeDefined();
+      expect(result.messages).toBeDefined();
 
-      // Should be able to retrieve the task
-      const tasks = await taskService.getAgentStatus('agent1');
-      const dependentTask = tasks.tasks.find(t => t.task === 'Dependent task');
+      // Check that we get the correct agent
+      expect(result.agents.length).toBeGreaterThanOrEqual(0);
+      expect(result.features.activeFeatures).toBeDefined();
 
-      expect(dependentTask).toBeDefined();
-      expect(dependentTask?.dependencies).toHaveLength(3);
-
-      // System should handle missing dependencies gracefully
-      // In a real system, this might trigger validation or warnings
+      // System should handle queries gracefully
+      expect(result.messages?.totalCount).toBeGreaterThanOrEqual(0);
     });
   });
 });

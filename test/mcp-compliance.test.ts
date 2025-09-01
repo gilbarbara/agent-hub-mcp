@@ -24,10 +24,18 @@ describe('MCP Protocol Compliance', () => {
       saveMessage: vi.fn().mockResolvedValue(undefined),
       getMessages: vi.fn().mockResolvedValue([]),
       markMessageAsRead: vi.fn().mockResolvedValue(undefined),
-      saveContext: vi.fn().mockResolvedValue(undefined),
-      getContext: vi.fn().mockResolvedValue({}),
       saveTask: vi.fn().mockResolvedValue(undefined),
       getTasks: vi.fn().mockResolvedValue([]),
+      // Features System methods
+      createFeature: vi.fn().mockResolvedValue(undefined),
+      getFeature: vi.fn().mockResolvedValue(undefined),
+      getFeatures: vi.fn().mockResolvedValue([]),
+      createTask: vi.fn().mockResolvedValue(undefined),
+      createDelegations: vi.fn().mockResolvedValue([]),
+      acceptDelegation: vi.fn().mockResolvedValue(undefined),
+      createSubtasks: vi.fn().mockResolvedValue([]),
+      updateSubtask: vi.fn().mockResolvedValue(undefined),
+      getAgentWorkload: vi.fn().mockResolvedValue({ activeFeatures: [] }),
     } as any;
 
     const mockMessageService = {
@@ -37,18 +45,11 @@ describe('MCP Protocol Compliance', () => {
       getMessageById: vi.fn().mockResolvedValue(undefined),
     } as any;
 
-    const mockContextService = {
-      setContext: vi.fn().mockResolvedValue({ success: true, version: 1 }),
-      getContext: vi.fn().mockResolvedValue({}),
-    } as any;
-
-    const mockTaskService = {
-      updateTaskStatus: vi.fn().mockResolvedValue({ success: true }),
-      getAgentStatus: vi.fn().mockResolvedValue({ agents: [], tasks: [] }),
-      startCollaboration: vi.fn().mockResolvedValue({
-        agent: 'test-agent',
-        activeAgents: [],
-        pendingMessages: 0,
+    const mockAgentService = {
+      getAgentStatus: vi.fn().mockResolvedValue({
+        agents: [],
+        features: { activeFeatures: [] },
+        messages: { unreadCount: 0, totalCount: 0 },
       }),
     } as any;
 
@@ -67,8 +68,7 @@ describe('MCP Protocol Compliance', () => {
     mockServices = {
       storage: mockStorage,
       messageService: mockMessageService,
-      contextService: mockContextService,
-      taskService: mockTaskService,
+      agentService: mockAgentService,
       getCurrentSession: vi.fn().mockReturnValue(mockSession),
       broadcastNotification: vi.fn().mockResolvedValue(undefined),
       sendNotificationToAgent: vi.fn().mockResolvedValue(undefined),
@@ -105,10 +105,7 @@ describe('MCP Protocol Compliance', () => {
       const expectedRequiredFields = {
         send_message: ['from', 'to', 'type', 'content'],
         get_messages: ['agent'],
-        set_context: ['key', 'value', 'agent'],
         register_agent: ['projectPath', 'role'],
-        update_task_status: ['agent', 'task', 'status'],
-        sync_request: ['from', 'to', 'topic'],
       };
 
       for (const tool of TOOLS) {
@@ -139,7 +136,6 @@ describe('MCP Protocol Compliance', () => {
       expect(typeProperty.enum).toContain('question');
       expect(typeProperty.enum).toContain('completion');
       expect(typeProperty.enum).toContain('error');
-      expect(typeProperty.enum).toContain('sync_request');
 
       const priorityProperty = schema.properties!.priority as any;
 
@@ -175,11 +171,6 @@ describe('MCP Protocol Compliance', () => {
         get_messages: {
           agent: 'agent1',
         },
-        set_context: {
-          key: 'test-key',
-          value: { test: 'data' },
-          agent: 'agent1',
-        },
       };
 
       for (const [toolName, input] of Object.entries(validInputs)) {
@@ -201,11 +192,6 @@ describe('MCP Protocol Compliance', () => {
           {}, // Missing agent
           { agent: 123 }, // Wrong type
         ],
-        set_context: [
-          {}, // Missing required fields
-          { key: 'test' }, // Missing value and agent
-          { key: 'test', value: 'val' }, // Missing agent
-        ],
       };
 
       for (const [toolName, inputs] of Object.entries(invalidInputs)) {
@@ -221,7 +207,6 @@ describe('MCP Protocol Compliance', () => {
       // Test missing required parameters
       await expect(toolHandlers.send_message({})).rejects.toThrow();
       await expect(toolHandlers.get_messages({})).rejects.toThrow();
-      await expect(toolHandlers.set_context({})).rejects.toThrow();
     });
 
     it('should handle validation errors gracefully', async () => {
@@ -272,20 +257,6 @@ describe('MCP Protocol Compliance', () => {
           expectedFields: ['count', 'messages'],
         },
         {
-          tool: 'set_context',
-          input: {
-            key: 'test-key',
-            value: 'test-value',
-            agent: 'agent1',
-          },
-          expectedFields: ['success', 'version'],
-        },
-        {
-          tool: 'get_context',
-          input: {},
-          expectedType: 'object',
-        },
-        {
           tool: 'register_agent',
           input: {
             projectPath: '/test/path',
@@ -294,32 +265,9 @@ describe('MCP Protocol Compliance', () => {
           expectedFields: ['success', 'agent', 'message'],
         },
         {
-          tool: 'update_task_status',
-          input: {
-            agent: 'agent1',
-            task: 'test task',
-            status: 'started',
-          },
-          expectedFields: ['success'],
-        },
-        {
           tool: 'get_agent_status',
           input: {},
-          expectedFields: ['agents', 'tasks'],
-        },
-        {
-          tool: 'start_collaboration',
-          input: { feature: 'test-feature' },
-          expectedFields: ['agent', 'activeAgents', 'pendingMessages'],
-        },
-        {
-          tool: 'sync_request',
-          input: {
-            from: 'agent1',
-            to: 'agent2',
-            topic: 'test topic',
-          },
-          expectedFields: ['response'],
+          expectedFields: ['agents', 'features'],
         },
       ];
 
@@ -333,15 +281,11 @@ describe('MCP Protocol Compliance', () => {
             expect(result).toHaveProperty(field);
           }
         }
-
-        if (testCase.expectedType) {
-          expect(typeof result).toBe(testCase.expectedType);
-        }
       }
     });
 
     it('should return consistent boolean success indicators', async () => {
-      const successTools = ['set_context', 'register_agent', 'update_task_status'];
+      const successTools = ['register_agent'];
 
       for (const toolName of successTools) {
         const tool = TOOLS.find(t => t.name === toolName);
@@ -441,53 +385,47 @@ describe('MCP Protocol Compliance', () => {
         }),
       );
     });
-
-    it('should handle object parameters correctly', async () => {
-      const complexValue = {
-        settings: { feature: true },
-        data: [1, 2, 3],
-        nested: { deep: 'value' },
-      };
-
-      await toolHandlers.set_context({
-        key: 'complex-key',
-        value: complexValue,
-        agent: 'test-agent',
-      });
-
-      expect(mockServices.contextService.setContext).toHaveBeenCalledWith(
-        'complex-key',
-        complexValue,
-        'test-agent',
-        {},
-      );
-    });
   });
 
   describe('Tool Availability', () => {
     it('should only expose non-deprecated tools', () => {
       const toolNames = TOOLS.map(t => t.name);
 
-      // Verify deprecated approval tools are not present
+      // Verify deprecated tools are not present
       expect(toolNames).not.toContain('approve_agent');
       expect(toolNames).not.toContain('set_approval_required');
+      expect(toolNames).not.toContain('set_context');
+      expect(toolNames).not.toContain('get_context');
+      expect(toolNames).not.toContain('update_task_status');
+      expect(toolNames).not.toContain('start_collaboration');
+      expect(toolNames).not.toContain('sync_request');
 
-      // Verify all current tools are present
+      // Verify all current tools are present (12 total)
       const expectedTools = [
+        // Messaging tools (2)
         'send_message',
         'get_messages',
-        'set_context',
-        'get_context',
+        // Agent management tools (2)
         'register_agent',
-        'update_task_status',
         'get_agent_status',
-        'start_collaboration',
-        'sync_request',
+        // Features System tools (8)
+        'create_feature',
+        'create_task',
+        'create_subtask',
+        'get_agent_workload',
+        'get_features',
+        'get_feature',
+        'accept_delegation',
+        'update_subtask',
       ];
 
       for (const expectedTool of expectedTools) {
         expect(toolNames).toContain(expectedTool);
       }
+
+      // Verify exact tool count
+      expect(toolNames).toHaveLength(12);
+      expect(expectedTools).toHaveLength(12);
     });
 
     it('should have matching handler for every tool definition', () => {
