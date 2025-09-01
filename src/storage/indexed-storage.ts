@@ -345,9 +345,18 @@ export class IndexedStorage implements CacheableStorageAdapter {
         this.stats.indexHits++;
 
         // Combine messages for the specific agent and broadcast messages
-        const allMessages = new Set([...agentMessages, ...broadcastMessages]);
+        // Deduplicate by message ID to handle duplicate object instances
+        const messageMap = new Map<string, Message>();
 
-        return [...allMessages].sort((a, b) => a.timestamp - b.timestamp);
+        for (const message of agentMessages) {
+          messageMap.set(message.id, message);
+        }
+
+        for (const message of broadcastMessages) {
+          messageMap.set(message.id, message);
+        }
+
+        return [...messageMap.values()].sort((a, b) => a.timestamp - b.timestamp);
       }
     }
 

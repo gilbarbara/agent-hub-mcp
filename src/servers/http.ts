@@ -122,6 +122,14 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
   // MCP HTTP endpoints
   app.post('/mcp', async (request, response) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
+
+    // Validate request body exists
+    if (!request.body || typeof request.body !== 'object') {
+      response.status(400).json({ error: 'Invalid request body' });
+
+      return;
+    }
+
     let session: AgentSession;
 
     if (sessionId && sessionManager.has(sessionId)) {
@@ -209,8 +217,15 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
   app.get('/mcp', async (request, response) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
 
-    if (!sessionId || !sessionManager.has(sessionId)) {
-      response.status(400).send('Invalid or missing session ID');
+    // Validate session ID format
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.length === 0) {
+      response.status(400).json({ error: 'Invalid or missing session ID' });
+
+      return;
+    }
+
+    if (!sessionManager.has(sessionId)) {
+      response.status(404).json({ error: 'Session not found' });
 
       return;
     }
@@ -229,8 +244,15 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
   app.delete('/mcp', async (request, response) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
 
-    if (!sessionId || !sessionManager.has(sessionId)) {
-      response.status(400).send('Invalid or missing session ID');
+    // Validate session ID format
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.length === 0) {
+      response.status(400).json({ error: 'Invalid or missing session ID' });
+
+      return;
+    }
+
+    if (!sessionManager.has(sessionId)) {
+      response.status(404).json({ error: 'Session not found' });
 
       return;
     }

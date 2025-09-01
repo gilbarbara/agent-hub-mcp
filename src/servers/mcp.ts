@@ -145,18 +145,28 @@ ${
   server.setRequestHandler(CallToolRequestSchema, async request => {
     const { arguments: arguments_, name } = request.params;
 
-    // Update agent's lastSeen timestamp
+    // Update agent's lastSeen timestamp for any tool call
     await updateAgentLastSeen();
 
-    // Get the tool handler
-    const handler = toolHandlers[name as keyof typeof toolHandlers];
-
-    if (!handler) {
-      throw new Error(`Unknown tool: ${name}`);
+    if (!arguments_) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ error: 'No arguments provided' }),
+          },
+        ],
+      };
     }
 
     try {
-      const result = await handler(arguments_ || {});
+      const handler = toolHandlers[name as keyof typeof toolHandlers];
+
+      if (!handler) {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+
+      const result = await handler(arguments_);
 
       return {
         content: [
@@ -167,13 +177,23 @@ ${
         ],
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // Only expose safe error messages to prevent information disclosure
+      let safeMessage = 'Operation failed';
+
+      // Only show detailed errors for validation failures (safe to expose)
+      if (error instanceof Error && error.message.includes('Invalid')) {
+        safeMessage = error.message;
+      }
+
+      // Log the full error for debugging (server-side only)
+      // eslint-disable-next-line no-console
+      console.error('Tool execution error:', error);
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ error: errorMessage }),
+            text: JSON.stringify({ error: safeMessage }),
           },
         ],
       };
@@ -342,64 +362,6 @@ ${
     }
 
     throw new Error(`Resource not found: ${uri}`);
-  });
-
-  server.setRequestHandler(CallToolRequestSchema, async request => {
-    const { arguments: arguments_, name } = request.params;
-
-    // Update agent's lastSeen timestamp for any tool call
-    await updateAgentLastSeen();
-
-    if (!arguments_) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ error: 'No arguments provided' }),
-          },
-        ],
-      };
-    }
-
-    try {
-      const handler = toolHandlers[name as keyof typeof toolHandlers];
-
-      if (!handler) {
-        throw new Error(`Unknown tool: ${name}`);
-      }
-
-      const result = await handler(arguments_);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result),
-          },
-        ],
-      };
-    } catch (error) {
-      // Only expose safe error messages to prevent information disclosure
-      let safeMessage = 'Operation failed';
-
-      // Only show detailed errors for validation failures (safe to expose)
-      if (error instanceof Error && error.message.includes('Invalid')) {
-        safeMessage = error.message;
-      }
-
-      // Log the full error for debugging (server-side only)
-      // eslint-disable-next-line no-console
-      console.error('Tool execution error:', error);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ error: safeMessage }),
-          },
-        ],
-      };
-    }
   });
 
   return server;

@@ -91,7 +91,7 @@ describe('Security Validation Functions', () => {
   });
 
   describe('validateProjectPath', () => {
-    it('should accept valid project paths', () => {
+    it('should accept valid project paths', async () => {
       const validPaths = [
         '/Users/test/project',
         '/home/user/project',
@@ -99,23 +99,23 @@ describe('Security Validation Functions', () => {
         `${process.cwd()}/test`,
       ];
 
-      validPaths.forEach(path => {
-        expect(() => validateProjectPath(path)).not.toThrow();
-      });
+      for (const path of validPaths) {
+        await expect(validateProjectPath(path)).resolves.not.toThrow();
+      }
     });
 
-    it('should reject paths with directory traversal', () => {
+    it('should reject paths with directory traversal', async () => {
       const invalidPaths = ['../parent/directory', '/some/path/../etc/passwd', '~/home/path'];
 
-      invalidPaths.forEach(path => {
-        expect(() => validateProjectPath(path)).toThrow('directory traversal');
-      });
+      for (const path of invalidPaths) {
+        await expect(() => validateProjectPath(path)).rejects.toThrow('directory traversal');
+      }
     });
 
-    it('should allow paths starting with / (absolute paths)', () => {
-      const absolutePath = '/etc/passwd';
+    it('should allow paths in allowed directories', async () => {
+      const allowedPath = '/Users/testuser/project';
 
-      expect(() => validateProjectPath(absolutePath)).not.toThrow();
+      await expect(validateProjectPath(allowedPath)).resolves.not.toThrow();
     });
   });
 

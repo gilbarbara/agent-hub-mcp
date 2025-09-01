@@ -70,10 +70,15 @@ export function createMessageHandlers(
     },
 
     async get_messages(arguments_: any) {
-      const result = await messageService.getMessages(arguments_.agent as string, {
-        type: arguments_.type as string,
-        since: arguments_.since as number,
-        markAsRead: arguments_.markAsRead,
+      const agent = validateIdentifier(arguments_.agent, 'agent');
+      const type = arguments_.type ? validateMessageType(arguments_.type) : undefined;
+      const since = arguments_.since as number;
+      const { markAsRead } = arguments_;
+
+      const result = await messageService.getMessages(agent, {
+        type,
+        since,
+        markAsRead,
       });
 
       return result;

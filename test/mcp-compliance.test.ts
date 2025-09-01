@@ -56,7 +56,7 @@ describe('MCP Protocol Compliance', () => {
     const mockSession = {
       agent: {
         id: 'test-agent',
-        projectPath: '/test',
+        projectPath: '/Users/test/project',
         role: 'Test Agent',
         capabilities: ['test'],
         status: 'active' as const,
@@ -259,7 +259,7 @@ describe('MCP Protocol Compliance', () => {
         {
           tool: 'register_agent',
           input: {
-            projectPath: '/test/path',
+            projectPath: '/Users/test/project',
             role: 'Test Agent',
           },
           expectedFields: ['success', 'agent', 'message'],
@@ -307,7 +307,7 @@ describe('MCP Protocol Compliance', () => {
               input.agent = 'test-agent';
               break;
             case 'projectPath':
-              input.projectPath = '/test/path';
+              input.projectPath = '/Users/test/project';
               break;
             case 'role':
               input.role = 'Test Role';
@@ -373,7 +373,7 @@ describe('MCP Protocol Compliance', () => {
       const capabilities = ['react', 'typescript', 'testing'];
 
       await toolHandlers.register_agent({
-        projectPath: '/test/path',
+        projectPath: '/Users/test/project',
         role: 'Frontend Developer',
         capabilities,
       });
