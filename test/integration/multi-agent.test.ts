@@ -27,7 +27,7 @@ describe('Multi-Agent Integration Tests', () => {
   // Mock agent sessions
   const frontendAgent: AgentRegistration = {
     id: 'frontend-agent',
-    projectPath: '/projects/frontend',
+    projectPath: '/Users/test/frontend',
     role: 'Frontend Developer',
     capabilities: ['react', 'typescript', 'ui'],
     status: 'active',
@@ -37,7 +37,7 @@ describe('Multi-Agent Integration Tests', () => {
 
   const backendAgent: AgentRegistration = {
     id: 'backend-agent',
-    projectPath: '/projects/backend',
+    projectPath: '/Users/test/backend',
     role: 'Backend Developer',
     capabilities: ['node', 'database', 'api'],
     status: 'active',
@@ -88,7 +88,7 @@ describe('Multi-Agent Integration Tests', () => {
       // Register a new mobile agent
       const registerResult = await toolHandlers.register_agent({
         id: 'mobile',
-        projectPath: '/projects/mobile',
+        projectPath: '/Users/test/mobile',
         role: 'Mobile Developer',
         capabilities: ['react-native', 'ios', 'android'],
         collaboratesWith: ['backend-agent'],
@@ -595,7 +595,7 @@ describe('Multi-Agent Integration Tests', () => {
       // Start with one ID
       const originalAgent: AgentRegistration = {
         id: 'original-id',
-        projectPath: '/project',
+        projectPath: '/Users/test/project',
         role: 'Developer',
         capabilities: [],
         status: 'active',

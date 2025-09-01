@@ -57,7 +57,7 @@ export class MessageService {
       const markAsReadPromises = unreadMessages.map(message => {
         const markPromise = this.storage.markMessageAsRead(message.id);
 
-        // Ensure we have a proper Promise to work with
+        // Ensure we have a proper Promise to work with (defensive programming for mocks)
         if (markPromise && typeof markPromise.catch === 'function') {
           return markPromise.catch(error => {
             // Log error but don't fail the entire operation if one message fails

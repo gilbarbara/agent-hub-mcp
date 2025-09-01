@@ -7,7 +7,7 @@ export async function createAgentFromProjectPath(
   projectPath: string,
 ): Promise<AgentRegistration> {
   // Validate the project path before using it
-  const validatedPath = validateProjectPath(projectPath);
+  const validatedPath = await validateProjectPath(projectPath);
   const { capabilities, role } = await detectProjectCapabilities(validatedPath);
 
   return {
@@ -36,7 +36,13 @@ export async function detectProjectCapabilities(projectPath: string): Promise<{
 
     // Detect capabilities from package.json if it exists
     try {
-      const packageJsonPath = path.join(projectPath, 'package.json');
+      const packageJsonPath = path.resolve(path.join(projectPath, 'package.json'));
+
+      // Validate path to prevent directory traversal
+      if (!packageJsonPath.startsWith(path.resolve(projectPath))) {
+        throw new Error('Invalid package.json path');
+      }
+
       const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
       const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
 

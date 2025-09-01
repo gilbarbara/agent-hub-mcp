@@ -123,7 +123,7 @@ export function validateMetadata(value: unknown): Record<string, any> | undefine
 /**
  * Validates project paths to prevent directory traversal
  */
-export function validateProjectPath(path: string): string {
+export async function validateProjectPath(path: string): Promise<string> {
   if (!path || typeof path !== 'string') {
     throw new Error('Invalid project path');
   }
@@ -144,13 +144,16 @@ export function validateProjectPath(path: string): string {
     process.cwd(), // Current working directory
   ];
 
-  const isAllowed = allowedPrefixes.some(prefix => path.startsWith(prefix));
+  // Resolve relative paths to absolute paths for proper validation
+  const { resolve } = await import('path');
+  const resolvedPath = resolve(path);
+  const isAllowed = allowedPrefixes.some(prefix => resolvedPath.startsWith(prefix));
 
-  if (!isAllowed && !path.startsWith('./') && !path.startsWith('/')) {
+  if (!isAllowed) {
     throw new Error('Project path must be in an allowed directory');
   }
 
-  return path;
+  return resolvedPath;
 }
 
 /**
