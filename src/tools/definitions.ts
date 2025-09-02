@@ -83,13 +83,11 @@ export const TOOLS: Tool[] = [
     },
   },
   {
-    name: 'get_agent_status',
-    description: 'Get status of agents and their tasks',
+    name: 'get_hub_status',
+    description: 'Get overview of hub activity, agents, and collaboration opportunities',
     inputSchema: {
       type: 'object',
-      properties: {
-        agent: { type: 'string', description: 'Specific agent to query' },
-      },
+      properties: {},
     },
   },
   {

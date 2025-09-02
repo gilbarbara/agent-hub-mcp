@@ -36,6 +36,18 @@ export class MessageService {
     return message.id;
   }
 
+  async getAllMessages(
+    options: {
+      since?: number;
+      type?: string;
+    } = {},
+  ): Promise<Message[]> {
+    return this.storage.getMessages({
+      type: options.type,
+      since: options.since,
+    });
+  }
+
   async getMessages(
     agentId: string,
     options: {

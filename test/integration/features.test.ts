@@ -97,11 +97,11 @@ describe('Multi-Agent Integration Tests', () => {
       expect(registerResult.success).toBe(true);
       expect(registerResult.agent.id).toBe('mobile');
 
-      // Get agent status to verify registration
-      const statusResult = await toolHandlers.get_agent_status({});
+      // Get hub status to verify registration
+      const statusResult = await toolHandlers.get_hub_status({});
 
-      expect(statusResult.agents).toHaveLength(3); // frontend, backend, mobile
-      expect(statusResult.agents.some((a: any) => a.id === 'mobile')).toBe(true);
+      expect(statusResult.agents.total).toBe(3); // frontend, backend, mobile
+      expect(statusResult.agents.active.some((a: any) => a.id === 'mobile')).toBe(true);
     });
 
     it('should discover active agents for collaboration', async () => {
@@ -308,14 +308,11 @@ describe('Multi-Agent Integration Tests', () => {
 
       await storage.saveAgent(offlineAgent);
 
-      // Test agent status instead of collaboration
-      const statusResult = await toolHandlers.get_agent_status({});
-      const activeAgents = statusResult.agents.filter(
-        (a: any) => Date.now() - a.lastSeen < 5 * 60 * 1000, // Active within 5 minutes
-      );
+      // Test hub status instead of collaboration
+      const statusResult = await toolHandlers.get_hub_status({});
 
-      expect(activeAgents.some((a: any) => a.id.includes('backend'))).toBe(false); // Backend offline
-      expect(activeAgents.some((a: any) => a.id.includes('frontend'))).toBe(true); // Frontend still active
+      expect(statusResult.agents.active.some((a: any) => a.id.includes('backend'))).toBe(false); // Backend offline
+      expect(statusResult.agents.active.some((a: any) => a.id.includes('frontend'))).toBe(true); // Frontend still active
     });
 
     it('should handle message delivery to offline agents', async () => {
@@ -544,7 +541,7 @@ describe('Multi-Agent Integration Tests', () => {
           // Message sending
           messageService.sendMessage('agent1', 'agent2', MessageType.CONTEXT, `msg-${index}`),
           // Agent status checks
-          agentService.getAgentStatus('agent1'),
+          agentService.getHubStatus(),
         );
       }
 
@@ -556,10 +553,10 @@ describe('Multi-Agent Integration Tests', () => {
 
       // Verify data integrity
       const messages = await messageService.getMessages('agent2');
-      const agentStatus = await agentService.getAgentStatus();
+      const hubStatus = await agentService.getHubStatus();
 
       expect(messages.messages.length).toBeGreaterThanOrEqual(20);
-      expect(agentStatus.agents.length).toBeGreaterThanOrEqual(1);
+      expect(hubStatus.agents.total).toBeGreaterThanOrEqual(1);
     });
 
     it('should handle malformed metadata gracefully', async () => {
@@ -630,20 +627,21 @@ describe('Multi-Agent Integration Tests', () => {
       expect(newMessages.messages[0].content).toBe('Message 2');
     });
 
-    it('should handle agent status queries gracefully', async () => {
-      // Query agent status for existing agent
-      const result = await agentService.getAgentStatus('frontend-agent');
+    it('should handle hub status queries gracefully', async () => {
+      // Query hub status
+      const result = await agentService.getHubStatus();
 
       expect(result.agents).toBeDefined();
       expect(result.features).toBeDefined();
       expect(result.messages).toBeDefined();
 
-      // Check that we get the correct agent
-      expect(result.agents.length).toBeGreaterThanOrEqual(0);
-      expect(result.features.activeFeatures).toBeDefined();
+      // Check that we get the correct structure
+      expect(result.agents.total).toBeGreaterThanOrEqual(0);
+      expect(result.features.active).toBeDefined();
+      expect(result.features.total).toBeGreaterThanOrEqual(0);
 
       // System should handle queries gracefully
-      expect(result.messages?.totalCount).toBeGreaterThanOrEqual(0);
+      expect(result.messages.totalUnread).toBeGreaterThanOrEqual(0);
     });
   });
 });
