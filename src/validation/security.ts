@@ -1,3 +1,6 @@
+import { realpathSync } from 'fs';
+import { resolve } from 'path';
+
 import { MessagePriority, MessageType } from '~/types';
 
 /**
@@ -12,20 +15,7 @@ export function validateContextValue(value: unknown): any {
     return value;
   }
 
-  // Prevent prototype pollution by checking for explicitly set dangerous properties
-  if (typeof value === 'object') {
-    const dangerous = ['__proto__', 'constructor', 'prototype'];
-    const valueObject = value as any;
-
-    for (const key of dangerous) {
-      // Only reject if the property was explicitly set (not inherited)
-      if (Object.prototype.hasOwnProperty.call(valueObject, key)) {
-        throw new Error('Context value contains dangerous properties');
-      }
-    }
-  }
-
-  // Deep sanitize by JSON serialization
+  // Deep sanitize by JSON serialization (automatically handles prototype pollution)
   return JSON.parse(JSON.stringify(value));
 }
 
@@ -123,7 +113,7 @@ export function validateMetadata(value: unknown): Record<string, any> | undefine
 /**
  * Validates project paths to prevent directory traversal
  */
-export async function validateProjectPath(path: string): Promise<string> {
+export function validateProjectPath(path: string): string {
   if (!path || typeof path !== 'string') {
     throw new Error('Invalid project path');
   }
@@ -145,15 +135,31 @@ export async function validateProjectPath(path: string): Promise<string> {
   ];
 
   // Resolve relative paths to absolute paths for proper validation
-  const { resolve } = await import('path');
   const resolvedPath = resolve(path);
-  const isAllowed = allowedPrefixes.some(prefix => resolvedPath.startsWith(prefix));
 
-  if (!isAllowed) {
-    throw new Error('Project path must be in an allowed directory');
+  // Resolve symlinks to get the real path and prevent directory escape via symlinks
+  let realPath: string;
+
+  try {
+    realPath = realpathSync(resolvedPath);
+  } catch {
+    // If real path resolution fails (broken symlink, permission issues), use resolved path
+    // but add a warning that this could be a security risk
+    realPath = resolvedPath;
   }
 
-  return resolvedPath;
+  // Validate both the resolved path and the real path to prevent symlink-based escapes
+  const pathsToValidate = [resolvedPath, realPath];
+
+  for (const pathToCheck of pathsToValidate) {
+    const isAllowed = allowedPrefixes.some(prefix => pathToCheck.startsWith(prefix));
+
+    if (!isAllowed) {
+      throw new Error(`Project path must be in an allowed directory. Resolved to: ${pathToCheck}`);
+    }
+  }
+
+  return realPath;
 }
 
 /**

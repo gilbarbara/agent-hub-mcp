@@ -1,10 +1,11 @@
 /* eslint-disable @vitest/no-conditional-expect */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TOOLS } from '../src/tools/definitions';
-import { createToolHandlers, ToolHandlerServices } from '../src/tools/handlers';
-import { MessageType } from '../src/types';
-import { validateToolInput } from '../src/validation';
+import { TOOLS } from '~/tools/definitions';
+import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';
+import { validateToolInput } from '~/validation';
+
+import { MessageType } from '~/types';
 
 describe('MCP Protocol Compliance', () => {
   let mockServices: ToolHandlerServices;
