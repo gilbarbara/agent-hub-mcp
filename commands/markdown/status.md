@@ -1,10 +1,15 @@
-description = "List all registered agents and their capabilities"
-prompt = """
-Show all registered agents in the hub with their roles, capabilities, and collaboration status.
+---
+allowed-tools: [agent-hub]
+description: Show hub status with all registered agents and their capabilities
+---
+
+# Hub Status
+
+Show current hub status with all registered agents, their roles, capabilities, and collaboration activity.
 
 I'll fetch the current agent registry and provide a comprehensive overview:
 
-⏺ agent-hub - get_agent_status (MCP)()
+⏺ agent-hub - get_hub_status (MCP)()
 
 ## Agent Overview
 
@@ -13,7 +18,7 @@ After retrieving the agent list, I'll display:
 ### 📋 **Active Agents**
 For each registered agent, I'll show:
 - **🆔 Agent ID**: Unique identifier
-- **🎯 Role**: Primary function and specialization
+- **🎯 Role**: Primary function and specialization  
 - **⚙️ Capabilities**: Detected and declared skills
 - **📁 Project**: Associated project path
 - **🤝 Collaborates With**: Preferred collaboration partners
@@ -32,5 +37,4 @@ I'll highlight potential collaboration matches based on:
 - Similar project types
 - Declared collaboration preferences
 
-If no agents are registered, I'll provide guidance on getting started with `/hub:register-agent`.
-"""
+If no agents are registered, I'll provide guidance on getting started with `/hub:register`.
