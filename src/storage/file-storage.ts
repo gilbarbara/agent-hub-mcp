@@ -270,6 +270,30 @@ export class FileStorage implements StorageAdapter {
     return agents;
   }
 
+  async findAgentById(agentId: string): Promise<AgentRegistration | undefined> {
+    const safeId = this.validatePathComponent(agentId);
+    const filePath = path.join(this.dataDirectory, 'agents', `${safeId}.json`);
+
+    return (await this.readJsonFile<AgentRegistration>(filePath)) || undefined;
+  }
+
+  async findAgentByProjectPath(projectPath: string): Promise<AgentRegistration | undefined> {
+    const agentsDirectory = path.join(this.dataDirectory, 'agents');
+    const files = await fs.readdir(agentsDirectory);
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const agent = await this.readJsonFile<AgentRegistration>(path.join(agentsDirectory, file));
+
+        if (agent && agent.projectPath === projectPath) {
+          return agent;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
   async updateAgent(agentId: string, updates: Partial<AgentRegistration>): Promise<void> {
     const safeId = this.validatePathComponent(agentId);
     const filePath = path.join(this.dataDirectory, 'agents', `${safeId}.json`);

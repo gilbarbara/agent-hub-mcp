@@ -467,6 +467,50 @@ export class IndexedStorage implements CacheableStorageAdapter {
     return agents;
   }
 
+  async findAgentById(agentId: string): Promise<AgentRegistration | undefined> {
+    // Check cache first
+    const cached = this.agentCache.get(agentId);
+
+    if (cached && this.isCacheEntryValid(cached)) {
+      this.stats.hits++;
+
+      return cached.data;
+    }
+
+    // Cache miss - delegate to file storage
+    this.stats.misses++;
+    const agent = await this.fileStorage.findAgentById(agentId);
+
+    // Cache the result if found
+    if (agent) {
+      this.cacheAgent(agent);
+    }
+
+    return agent;
+  }
+
+  async findAgentByProjectPath(projectPath: string): Promise<AgentRegistration | undefined> {
+    // First check cache - iterate through all cached agents
+    for (const [, cached] of this.agentCache.entries()) {
+      if (this.isCacheEntryValid(cached) && cached.data.projectPath === projectPath) {
+        this.stats.hits++;
+
+        return cached.data;
+      }
+    }
+
+    // Cache miss - delegate to file storage
+    this.stats.misses++;
+    const agent = await this.fileStorage.findAgentByProjectPath(projectPath);
+
+    // Cache the result if found
+    if (agent) {
+      this.cacheAgent(agent);
+    }
+
+    return agent;
+  }
+
   async updateAgent(agentId: string, updates: Partial<AgentRegistration>): Promise<void> {
     await this.fileStorage.updateAgent(agentId, updates);
 

@@ -95,13 +95,13 @@ describe('Multi-Agent Integration Tests', () => {
       });
 
       expect(registerResult.success).toBe(true);
-      expect(registerResult.agent.id).toMatch(/mobile-/);
+      expect(registerResult.agent.id).toBe('mobile');
 
       // Get agent status to verify registration
       const statusResult = await toolHandlers.get_agent_status({});
 
       expect(statusResult.agents).toHaveLength(3); // frontend, backend, mobile
-      expect(statusResult.agents.some((a: any) => a.id.startsWith('mobile-'))).toBe(true);
+      expect(statusResult.agents.some((a: any) => a.id === 'mobile')).toBe(true);
     });
 
     it('should discover active agents for collaboration', async () => {

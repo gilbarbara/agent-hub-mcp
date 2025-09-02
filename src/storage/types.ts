@@ -81,6 +81,8 @@ export interface StorageAdapter {
   // Task operations within features
   createTask(featureId: string, task: ParentTask): Promise<void>;
 
+  findAgentById(agentId: string): Promise<AgentRegistration | undefined>;
+  findAgentByProjectPath(projectPath: string): Promise<AgentRegistration | undefined>;
   getAgents(agentId?: string): Promise<AgentRegistration[]>;
   // Agent work discovery
   getAgentWorkload(agentId: string): Promise<AgentWorkload>;

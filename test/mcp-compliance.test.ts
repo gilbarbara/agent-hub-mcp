@@ -21,6 +21,8 @@ describe('MCP Protocol Compliance', () => {
     const mockStorage = {
       saveAgent: vi.fn().mockResolvedValue(undefined),
       getAgents: vi.fn().mockResolvedValue([]),
+      findAgentById: vi.fn().mockResolvedValue(undefined),
+      findAgentByProjectPath: vi.fn().mockResolvedValue(undefined),
       saveMessage: vi.fn().mockResolvedValue(undefined),
       getMessages: vi.fn().mockResolvedValue([]),
       markMessageAsRead: vi.fn().mockResolvedValue(undefined),
