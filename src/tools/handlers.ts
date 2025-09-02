@@ -155,9 +155,12 @@ export function createToolHandlers(services: ToolHandlerServices) {
       await services.storage.saveAgent(agent);
 
       // Broadcast appropriate notification
-      await (isExistingAgent
-        ? services.broadcastNotification('agent_rejoined', { agent })
-        : services.broadcastNotification('agent_joined', { agent }));
+      // eslint-disable-next-line unicorn/prefer-ternary
+      if (isExistingAgent) {
+        await services.broadcastNotification('agent_rejoined', { agent });
+      } else {
+        await services.broadcastNotification('agent_joined', { agent });
+      }
 
       // Return enhanced response with feedback
       const actionVerb = isExistingAgent ? 'reconnected' : 'registered';

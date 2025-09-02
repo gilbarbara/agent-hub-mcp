@@ -7,7 +7,7 @@ export async function createAgentFromProjectPath(
   projectPath: string,
 ): Promise<AgentRegistration> {
   // Validate the project path before using it
-  const validatedPath = await validateProjectPath(projectPath);
+  const validatedPath = validateProjectPath(projectPath);
   const { capabilities, role } = await detectProjectCapabilities(validatedPath);
 
   return {
