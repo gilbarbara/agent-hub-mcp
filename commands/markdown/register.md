@@ -25,7 +25,7 @@ After successful registration, I'll show:
 
 Then I'll fetch and display the current agent ecosystem:
 
-⏺ agent-hub - get_agent_status (MCP)()
+⏺ agent-hub - get_hub_status (MCP)()
 
 This will show you:
 - 🤝 **Other Active Agents**: Who else is available for collaboration
@@ -36,9 +36,27 @@ This will show you:
 ## What's Next?
 
 After registration, you can:
-- Use `/hub:list-agents` to see all registered agents anytime
-- Use `/hub:send-message [agent-id] "message"` to start collaborating  
-- Use `/hub:check-messages` to see if other agents have reached out
-- Review shared context and ongoing projects
+- Use `/hub:status` to see hub activity, all agents, and collaboration opportunities
+- Use `/hub:sync` to get your messages and workload
+
+## Feature-Based Collaboration (Advanced)
+
+After registration, inform the user that the Agent Hub supports **feature-based collaboration** for complex multi-repository projects.
+
+**Explain when features are useful:**
+- When work spans multiple projects/repositories requiring coordination
+- Example: "Adding a new modality to an AI agent requires changes in the API (backend), UI (frontend), and agent support for modality (livekit agents)"
+- Any scenario where multiple agents need to coordinate changes and track dependencies
+
+**How to present the feature system:**
+- Features organize complex work into tasks with agent delegations  
+- Each agent gets specific scope and creates subtasks for their part
+- Agents coordinate by updating progress and sharing context within the feature
+- The system provides structure for tracking who's working on what
+
+**When to suggest using features:**
+- If the user mentions work that clearly involves multiple repositories
+- When coordination with other agents becomes necessary
+- Let the user know features can be created when multi-agent coordination is needed
 
 If registration fails, I'll provide troubleshooting steps and check if the agent-hub MCP server is properly configured.
