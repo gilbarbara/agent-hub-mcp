@@ -1,9 +1,6 @@
 import path from 'path';
 
-import { createId } from '@paralleldrive/cuid2';
-
 import { createAgentFromProjectPath } from '~/agents/detection';
-import { sendWelcomeMessage } from '~/agents/registration';
 import { AgentService } from '~/agents/service';
 import { AgentSession } from '~/agents/session';
 import { FeaturesHandler } from '~/features/handlers';
@@ -51,78 +48,127 @@ export function createToolHandlers(services: ToolHandlerServices) {
       const validatedArguments = validateToolInput('register_agent', arguments_);
       const currentSession = services.getCurrentSession();
       let agent: AgentRegistration;
+      let isExistingAgent = false;
 
       const projectPath = validatedArguments.projectPath as string;
 
-      // Generate agent ID with suffix for uniqueness
-      let agentId: string;
-      const randomSuffix = createId().slice(0, 5);
+      // Determine the agent ID that would be used
+      const proposedAgentId = validatedArguments.id
+        ? (validatedArguments.id as string)
+        : path.basename(projectPath);
 
+      // Check for conflicts: existing agent ID with different project path
       if (validatedArguments.id) {
-        // User provided ID: helpers → helpers-x3k2m
-        const baseId = validatedArguments.id as string;
+        const existingAgentById = await services.storage.findAgentById(proposedAgentId);
 
-        agentId = `${baseId}-${randomSuffix}`;
-      } else {
-        // No ID provided: extract from project path
-        // /Users/name/helpers → helpers-x3k2m
-        const projectName = path.basename(projectPath);
-
-        agentId = `${projectName}-${randomSuffix}`;
+        if (existingAgentById && existingAgentById.projectPath !== projectPath) {
+          return {
+            success: false,
+            error: 'AGENT_ID_CONFLICT',
+            message: `❌ Agent ID '${proposedAgentId}' is already registered with a different project path (${existingAgentById.projectPath}). Cannot register with ${projectPath}.`,
+            existingAgent: {
+              id: existingAgentById.id,
+              projectPath: existingAgentById.projectPath,
+              role: existingAgentById.role,
+            },
+          };
+        }
       }
 
-      // Create agent using project-based detection
-      if (projectPath && projectPath !== 'unknown') {
-        // Use provided project path for auto-detection
-        agent = await createAgentFromProjectPath(agentId, projectPath);
+      // Check if an agent already exists for this project path
+      const existingAgent = await services.storage.findAgentByProjectPath(projectPath);
 
-        // Merge with any provided capabilities
+      if (existingAgent) {
+        // Agent exists - update it instead of creating new one
+        isExistingAgent = true;
+        agent = existingAgent;
+
+        // Update agent properties
+        agent.lastSeen = Date.now();
+        agent.status = 'active';
+
+        // Update role if provided
+        if (validatedArguments.role) {
+          agent.role = validatedArguments.role as string;
+        }
+
+        // Merge capabilities if provided
         if (validatedArguments.capabilities) {
           agent.capabilities = [
             ...new Set([...agent.capabilities, ...validatedArguments.capabilities]),
           ];
         }
 
-        // Use provided role if specified
-        if (validatedArguments.role) {
-          agent.role = validatedArguments.role as string;
+        // Update collaboratesWith if provided
+        if (validatedArguments.collaboratesWith) {
+          agent.collaboratesWith = validatedArguments.collaboratesWith as string[];
         }
       } else {
-        // Manual registration with provided info only
-        agent = {
-          id: agentId,
-          projectPath,
-          role: validatedArguments.role as string,
-          capabilities: (validatedArguments.capabilities as string[]) ?? [],
-          status: 'active',
-          lastSeen: Date.now(),
-          collaboratesWith: (validatedArguments.collaboratesWith as string[]) ?? [],
-        };
+        // No existing agent - create new one with clean ID (no random suffix)
+        const agentId = validatedArguments.id
+          ? (validatedArguments.id as string) // User provided ID - use as-is
+          : path.basename(projectPath); // No ID provided: extract from project path
+
+        // Create agent using project-based detection
+        if (projectPath && projectPath !== 'unknown') {
+          // Use provided project path for auto-detection
+          agent = await createAgentFromProjectPath(agentId, projectPath);
+
+          // Merge with any provided capabilities
+          if (validatedArguments.capabilities) {
+            agent.capabilities = [
+              ...new Set([...agent.capabilities, ...validatedArguments.capabilities]),
+            ];
+          }
+
+          // Use provided role if specified
+          if (validatedArguments.role) {
+            agent.role = validatedArguments.role as string;
+          }
+
+          // Set collaboratesWith if provided
+          if (validatedArguments.collaboratesWith) {
+            agent.collaboratesWith = validatedArguments.collaboratesWith as string[];
+          }
+        } else {
+          // Manual registration with provided info only
+          agent = {
+            id: agentId,
+            projectPath,
+            role: validatedArguments.role as string,
+            capabilities: (validatedArguments.capabilities as string[]) ?? [],
+            status: 'active',
+            lastSeen: Date.now(),
+            collaboratesWith: (validatedArguments.collaboratesWith as string[]) ?? [],
+          };
+        }
       }
 
-      // No approval required - directly activate agent
+      // Ensure agent is active
       agent.status = 'active';
 
-      // Update session with new agent
+      // Update session with agent
       if (currentSession) {
         currentSession.agent = agent;
       }
 
       await services.storage.saveAgent(agent);
 
-      // Broadcast agent joined notification
-      await services.broadcastNotification('agent_joined', { agent });
-
-      // Send welcome message to new agent
-      await sendWelcomeMessage(services.storage, agent);
+      // Broadcast appropriate notification
+      await (isExistingAgent
+        ? services.broadcastNotification('agent_rejoined', { agent })
+        : services.broadcastNotification('agent_joined', { agent }));
 
       // Return enhanced response with feedback
+      const actionVerb = isExistingAgent ? 'reconnected' : 'registered';
+
       return {
         success: true,
         agent,
-        message: `✅ Agent registered successfully! Welcome ${agent.id} (${agent.role}).`,
+        message: `✅ Agent ${actionVerb} successfully! ${isExistingAgent ? 'Welcome back' : 'Welcome'} ${agent.id} (${agent.role}).`,
         detectedCapabilities: agent.capabilities,
         collaborationReady: true,
+        reconnected: isExistingAgent,
       };
     },
 
