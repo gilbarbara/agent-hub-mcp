@@ -124,7 +124,7 @@ After registration you'll be able to:
 💬 Communication:
 • send_message - Send messages to other agents
 • get_messages - Check for new messages (manual check required)
-• get_agent_status - See who's active and their capabilities
+• get_hub_status - See hub activity, agents, and collaboration opportunities
 
 Note: Messages are stored instantly but require manual checking with get_messages.
 Claude Code uses a pull-only model - no automatic notifications.

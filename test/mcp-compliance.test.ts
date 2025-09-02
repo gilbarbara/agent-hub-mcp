@@ -48,10 +48,21 @@ describe('MCP Protocol Compliance', () => {
     } as any;
 
     const mockAgentService = {
-      getAgentStatus: vi.fn().mockResolvedValue({
-        agents: [],
-        features: { activeFeatures: [] },
-        messages: { unreadCount: 0, totalCount: 0 },
+      getHubStatus: vi.fn().mockResolvedValue({
+        agents: {
+          total: 0,
+          active: [],
+          inactive: [],
+        },
+        features: {
+          total: 0,
+          active: [],
+          byPriority: { critical: 0, high: 0, normal: 0, low: 0 },
+        },
+        messages: {
+          totalUnread: 0,
+          recentActivity: 0,
+        },
       }),
     } as any;
 
@@ -267,9 +278,9 @@ describe('MCP Protocol Compliance', () => {
           expectedFields: ['success', 'agent', 'message'],
         },
         {
-          tool: 'get_agent_status',
+          tool: 'get_hub_status',
           input: {},
-          expectedFields: ['agents', 'features'],
+          expectedFields: ['agents', 'features', 'messages'],
         },
       ];
 
@@ -409,7 +420,7 @@ describe('MCP Protocol Compliance', () => {
         'get_messages',
         // Agent management tools (2)
         'register_agent',
-        'get_agent_status',
+        'get_hub_status',
         // Features System tools (8)
         'create_feature',
         'create_task',

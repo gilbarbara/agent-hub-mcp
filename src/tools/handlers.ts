@@ -172,10 +172,10 @@ export function createToolHandlers(services: ToolHandlerServices) {
       };
     },
 
-    async get_agent_status(arguments_: any) {
-      const validatedArguments = validateToolInput('get_agent_status', arguments_);
+    async get_hub_status(arguments_: any) {
+      validateToolInput('get_hub_status', arguments_);
 
-      return services.agentService.getAgentStatus(validatedArguments.agent);
+      return services.agentService.getHubStatus();
     },
 
     // Features system tools

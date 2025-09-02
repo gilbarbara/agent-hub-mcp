@@ -5,7 +5,7 @@ import { FeaturesService } from '~/features/service';
 import { MessageService } from '~/messaging/service';
 import { StorageAdapter } from '~/storage';
 
-import { AgentRegistration, MessagePriority, MessageType } from '~/types';
+import { AgentRegistration } from '~/types';
 
 describe('AgentService', () => {
   let agentService: AgentService;
@@ -29,8 +29,48 @@ describe('AgentService', () => {
       role: 'Backend Developer',
       capabilities: ['nodejs', 'express'],
       status: 'active',
-      lastSeen: Date.now(),
+      lastSeen: Date.now() - 10 * 60 * 1000, // 10 minutes ago (inactive)
       collaboratesWith: ['agent-1'],
+    },
+  ];
+
+  const mockFeatures = [
+    {
+      id: 'feature-1',
+      title: 'User Authentication',
+      status: 'active',
+      priority: 'high',
+    },
+    {
+      id: 'feature-2',
+      title: 'Dashboard UI',
+      status: 'active',
+      priority: 'normal',
+    },
+    {
+      id: 'feature-3',
+      title: 'Settings Page',
+      status: 'completed',
+      priority: 'low',
+    },
+  ];
+
+  const mockMessages = [
+    {
+      id: 'msg-1',
+      from: 'agent-1',
+      to: 'agent-2',
+      content: 'Test message',
+      read: false,
+      timestamp: Date.now(),
+    },
+    {
+      id: 'msg-2',
+      from: 'agent-2',
+      to: 'agent-1',
+      content: 'Another message',
+      read: true,
+      timestamp: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
     },
   ];
 
@@ -44,12 +84,12 @@ describe('AgentService', () => {
 
     // Mock FeaturesService
     mockFeaturesService = {
-      getAgentWorkload: vi.fn(),
+      getFeatures: vi.fn(),
     };
 
     // Mock MessageService
     mockMessageService = {
-      getMessages: vi.fn(),
+      getAllMessages: vi.fn(),
     };
 
     agentService = new AgentService(
@@ -63,317 +103,197 @@ describe('AgentService', () => {
     vi.clearAllMocks();
   });
 
-  describe('getAgentStatus', () => {
-    describe('without agentId (get all agents)', () => {
-      it('should return all agents with empty features and no messages', async () => {
-        mockStorage.getAgents.mockResolvedValue(mockAgents);
+  describe('getAllAgents', () => {
+    it('should return all agents from storage', async () => {
+      mockStorage.getAgents.mockResolvedValue(mockAgents);
 
-        const result = await agentService.getAgentStatus();
+      const result = await agentService.getAllAgents();
 
-        expect(result).toEqual({
-          agents: mockAgents,
-          features: { activeFeatures: [] },
-          messages: undefined,
-        });
+      expect(result).toEqual(mockAgents);
+      expect(mockStorage.getAgents).toHaveBeenCalledWith();
+    });
 
-        expect(mockStorage.getAgents).toHaveBeenCalledWith(undefined);
-        expect(mockFeaturesService.getAgentWorkload).not.toHaveBeenCalled();
-        expect(mockMessageService.getMessages).not.toHaveBeenCalled();
-      });
+    it('should handle empty agent list', async () => {
+      mockStorage.getAgents.mockResolvedValue([]);
 
-      it('should handle empty agent list', async () => {
-        mockStorage.getAgents.mockResolvedValue([]);
+      const result = await agentService.getAllAgents();
 
-        const result = await agentService.getAgentStatus();
+      expect(result).toEqual([]);
+    });
+  });
 
-        expect(result).toEqual({
-          agents: [],
-          features: { activeFeatures: [] },
-          messages: undefined,
-        });
-      });
+  describe('getHubStatus', () => {
+    it('should return comprehensive hub status with active/inactive agents', async () => {
+      mockStorage.getAgents.mockResolvedValue(mockAgents);
+      mockFeaturesService.getFeatures.mockResolvedValue(mockFeatures);
+      mockMessageService.getAllMessages.mockResolvedValue(mockMessages);
 
-      it('should handle null agents response', async () => {
-        mockStorage.getAgents.mockResolvedValue(null);
+      const result = await agentService.getHubStatus();
 
-        const result = await agentService.getAgentStatus();
-
-        expect(result).toEqual({
-          agents: [],
-          features: { activeFeatures: [] },
-          messages: undefined,
-        });
+      expect(result).toEqual({
+        agents: {
+          total: 2,
+          active: [mockAgents[0]], // Only agent-1 is active (within 5 min)
+          inactive: [mockAgents[1]], // agent-2 is inactive (10 min ago)
+        },
+        features: {
+          total: 3,
+          active: [mockFeatures[0], mockFeatures[1]], // Only active features
+          byPriority: {
+            critical: 0,
+            high: 1,
+            normal: 1,
+            low: 1,
+          },
+        },
+        messages: {
+          totalUnread: 1, // Only msg-1 is unread
+          recentActivity: 1, // Only msg-1 is from last hour
+        },
       });
     });
 
-    describe('with specific agentId', () => {
-      it('should return agent with features and messages', async () => {
-        const agentId = 'agent-1';
-        const mockFeatures = {
-          activeFeatures: [
-            {
-              id: 'feature-1',
-              name: 'user-auth',
-              title: 'User Authentication',
-              status: 'active',
-            },
-          ],
-          delegations: [
-            {
-              id: 'delegation-1',
-              taskId: 'task-1',
-              agentId: 'agent-1',
-              scope: 'Implement login form',
-              status: 'accepted',
-            },
-          ],
-        };
-        const mockMessages = {
-          messages: [
-            {
-              id: 'msg-1',
-              from: 'agent-2',
-              to: 'agent-1',
-              type: MessageType.CONTEXT,
-              content: 'API endpoints ready',
-              timestamp: Date.now(),
-              read: false,
-              priority: MessagePriority.NORMAL,
-            },
-            {
-              id: 'msg-2',
-              from: 'agent-hub',
-              to: 'agent-1',
-              type: MessageType.TASK,
-              content: 'New task assigned',
-              timestamp: Date.now(),
-              read: true,
-              priority: MessagePriority.NORMAL,
-            },
-          ],
-        };
+    it('should handle empty data gracefully', async () => {
+      mockStorage.getAgents.mockResolvedValue([]);
+      mockFeaturesService.getFeatures.mockResolvedValue([]);
+      mockMessageService.getAllMessages.mockResolvedValue([]);
 
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue(mockFeatures);
-        mockMessageService.getMessages.mockResolvedValue(mockMessages);
+      const result = await agentService.getHubStatus();
 
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result).toEqual({
-          agents: [mockAgents[0]],
-          features: mockFeatures,
-          messages: {
-            totalCount: 2,
-            unreadCount: 1,
+      expect(result).toEqual({
+        agents: {
+          total: 0,
+          active: [],
+          inactive: [],
+        },
+        features: {
+          total: 0,
+          active: [],
+          byPriority: {
+            critical: 0,
+            high: 0,
+            normal: 0,
+            low: 0,
           },
-        });
-
-        expect(mockStorage.getAgents).toHaveBeenCalledWith(agentId);
-        expect(mockFeaturesService.getAgentWorkload).toHaveBeenCalledWith(agentId);
-        expect(mockMessageService.getMessages).toHaveBeenCalledWith(agentId, {
-          markAsRead: false,
-        });
-      });
-
-      it('should handle agent with no messages', async () => {
-        const agentId = 'agent-1';
-        const mockFeatures = { activeFeatures: [] };
-        const mockMessages = { messages: [] };
-
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue(mockFeatures);
-        mockMessageService.getMessages.mockResolvedValue(mockMessages);
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result).toEqual({
-          agents: [mockAgents[0]],
-          features: mockFeatures,
-          messages: {
-            totalCount: 0,
-            unreadCount: 0,
-          },
-        });
-      });
-
-      it('should handle all read messages', async () => {
-        const agentId = 'agent-1';
-        const mockFeatures = { activeFeatures: [] };
-        const mockMessages = {
-          messages: [
-            {
-              id: 'msg-1',
-              from: 'agent-2',
-              to: 'agent-1',
-              type: MessageType.CONTEXT,
-              content: 'Test message',
-              timestamp: Date.now(),
-              read: true,
-              priority: MessagePriority.NORMAL,
-            },
-          ],
-        };
-
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue(mockFeatures);
-        mockMessageService.getMessages.mockResolvedValue(mockMessages);
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result.messages).toEqual({
-          totalCount: 1,
-          unreadCount: 0,
-        });
-      });
-
-      it('should gracefully handle message service errors', async () => {
-        const agentId = 'agent-1';
-        const mockFeatures = { activeFeatures: [] };
-
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue(mockFeatures);
-        mockMessageService.getMessages.mockRejectedValue(new Error('Database error'));
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result).toEqual({
-          agents: [mockAgents[0]],
-          features: mockFeatures,
-          messages: {
-            totalCount: 0,
-            unreadCount: 0,
-          },
-        });
-
-        // Should not throw error
-        expect(mockMessageService.getMessages).toHaveBeenCalledWith(agentId, {
-          markAsRead: false,
-        });
-      });
-
-      it('should handle non-existent agent', async () => {
-        const agentId = 'non-existent';
-
-        mockStorage.getAgents.mockResolvedValue(null);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue({ activeFeatures: [] });
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result).toEqual({
-          agents: [],
-          features: { activeFeatures: [] },
-          messages: {
-            totalCount: 0,
-            unreadCount: 0,
-          },
-        });
-      });
-
-      it('should handle complex workload data', async () => {
-        const agentId = 'agent-1';
-        const mockFeatures = {
-          activeFeatures: [
-            { id: 'feature-1', name: 'auth', status: 'active' },
-            { id: 'feature-2', name: 'payment', status: 'planning' },
-          ],
-          delegations: [
-            { id: 'del-1', agentId, status: 'accepted' },
-            { id: 'del-2', agentId, status: 'pending' },
-          ],
-          subtasks: [
-            { id: 'sub-1', title: 'Implement login', status: 'completed' },
-            { id: 'sub-2', title: 'Add validation', status: 'in-progress' },
-          ],
-        };
-
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue(mockFeatures);
-        mockMessageService.getMessages.mockResolvedValue({ messages: [] });
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result.features).toEqual(mockFeatures);
+        },
+        messages: {
+          totalUnread: 0,
+          recentActivity: 0,
+        },
       });
     });
 
-    describe('error handling', () => {
-      it('should handle storage errors gracefully', async () => {
-        mockStorage.getAgents.mockRejectedValue(new Error('Storage unavailable'));
+    it('should correctly categorize agents by activity (5 minute threshold)', async () => {
+      const now = Date.now();
+      const agentsWithVariedActivity: AgentRegistration[] = [
+        {
+          id: 'active-1',
+          projectPath: '/path1',
+          role: 'Developer',
+          capabilities: [],
+          status: 'active',
+          lastSeen: now - 2 * 60 * 1000, // 2 minutes ago (active)
+          collaboratesWith: [],
+        },
+        {
+          id: 'active-2',
+          projectPath: '/path2',
+          role: 'Developer',
+          capabilities: [],
+          status: 'active',
+          lastSeen: now - 4 * 60 * 1000, // 4 minutes ago (active)
+          collaboratesWith: [],
+        },
+        {
+          id: 'inactive-1',
+          projectPath: '/path3',
+          role: 'Developer',
+          capabilities: [],
+          status: 'active',
+          lastSeen: now - 6 * 60 * 1000, // 6 minutes ago (inactive)
+          collaboratesWith: [],
+        },
+      ];
 
-        await expect(agentService.getAgentStatus()).rejects.toThrow('Storage unavailable');
-      });
+      mockStorage.getAgents.mockResolvedValue(agentsWithVariedActivity);
+      mockFeaturesService.getFeatures.mockResolvedValue([]);
+      mockMessageService.getAllMessages.mockResolvedValue([]);
 
-      it('should handle features service errors', async () => {
-        const agentId = 'agent-1';
+      const result = await agentService.getHubStatus();
 
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockRejectedValue(new Error('Features service error'));
-        mockMessageService.getMessages.mockResolvedValue({ messages: [] });
+      expect(result.agents.active).toHaveLength(2);
+      expect(result.agents.inactive).toHaveLength(1);
+      expect(result.agents.active.map(a => a.id)).toEqual(['active-1', 'active-2']);
+      expect(result.agents.inactive.map(a => a.id)).toEqual(['inactive-1']);
+    });
 
-        await expect(agentService.getAgentStatus(agentId)).rejects.toThrow(
-          'Features service error',
-        );
-      });
+    it('should correctly categorize features by status and priority', async () => {
+      const mixedFeatures = [
+        { id: 'f1', status: 'active', priority: 'critical' },
+        { id: 'f2', status: 'active', priority: 'high' },
+        { id: 'f3', status: 'completed', priority: 'normal' },
+        { id: 'f4', status: 'active', priority: 'low' },
+        { id: 'f5', status: 'active', priority: 'critical' },
+      ];
 
-      it('should not throw when message service fails but continue with default values', async () => {
-        const agentId = 'agent-1';
+      mockStorage.getAgents.mockResolvedValue([]);
+      mockFeaturesService.getFeatures.mockResolvedValue(mixedFeatures);
+      mockMessageService.getAllMessages.mockResolvedValue([]);
 
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue({ activeFeatures: [] });
-        mockMessageService.getMessages.mockRejectedValue(new Error('Message service down'));
+      const result = await agentService.getHubStatus();
 
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result.messages).toEqual({
-          totalCount: 0,
-          unreadCount: 0,
-        });
+      expect(result.features.total).toBe(5);
+      expect(result.features.active).toHaveLength(4); // Only active features
+      expect(result.features.byPriority).toEqual({
+        critical: 2,
+        high: 1,
+        normal: 1,
+        low: 1,
       });
     });
 
-    describe('data filtering', () => {
-      it('should correctly count unread messages', async () => {
-        const agentId = 'agent-1';
-        const mockMessages = {
-          messages: [
-            { id: '1', read: false },
-            { id: '2', read: true },
-            { id: '3', read: false },
-            { id: '4', read: false },
-            { id: '5', read: true },
-          ],
-        };
+    it('should correctly calculate message activity (1 hour threshold)', async () => {
+      const now = Date.now();
+      const mixedMessages = [
+        {
+          id: 'm1',
+          from: 'a1',
+          to: 'a2',
+          read: false,
+          timestamp: now - 30 * 60 * 1000, // 30 min ago (recent, unread)
+        },
+        {
+          id: 'm2',
+          from: 'a2',
+          to: 'a1',
+          read: true,
+          timestamp: now - 45 * 60 * 1000, // 45 min ago (recent, read)
+        },
+        {
+          id: 'm3',
+          from: 'a1',
+          to: 'a2',
+          read: false,
+          timestamp: now - 2 * 60 * 60 * 1000, // 2 hours ago (old, unread)
+        },
+      ];
 
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue({ activeFeatures: [] });
-        mockMessageService.getMessages.mockResolvedValue(mockMessages);
+      mockStorage.getAgents.mockResolvedValue([]);
+      mockFeaturesService.getFeatures.mockResolvedValue([]);
+      mockMessageService.getAllMessages.mockResolvedValue(mixedMessages);
 
-        const result = await agentService.getAgentStatus(agentId);
+      const result = await agentService.getHubStatus();
 
-        expect(result.messages).toEqual({
-          totalCount: 5,
-          unreadCount: 3,
-        });
-      });
+      expect(result.messages.totalUnread).toBe(2); // m1 and m3 are unread
+      expect(result.messages.recentActivity).toBe(2); // m1 and m2 are recent
+    });
 
-      it('should handle undefined read property as unread', async () => {
-        const agentId = 'agent-1';
-        const mockMessages = {
-          messages: [
-            { id: '1', read: false },
-            { id: '2', read: undefined },
-            { id: '3' }, // no read property
-          ],
-        };
+    it('should handle service errors gracefully', async () => {
+      mockStorage.getAgents.mockRejectedValue(new Error('Storage error'));
+      mockFeaturesService.getFeatures.mockResolvedValue([]);
+      mockMessageService.getAllMessages.mockResolvedValue([]);
 
-        mockStorage.getAgents.mockResolvedValue([mockAgents[0]]);
-        mockFeaturesService.getAgentWorkload.mockResolvedValue({ activeFeatures: [] });
-        mockMessageService.getMessages.mockResolvedValue(mockMessages);
-
-        const result = await agentService.getAgentStatus(agentId);
-
-        expect(result.messages?.unreadCount).toBe(3);
-      });
+      await expect(agentService.getHubStatus()).rejects.toThrow('Storage error');
     });
   });
 });
