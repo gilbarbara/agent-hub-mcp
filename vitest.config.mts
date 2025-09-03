@@ -8,9 +8,11 @@ export default defineConfig({
       all: true,
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*'],
+      exclude: ['src/index.ts', 'src/index-http.ts', 'src/servers/**/*'],
     },
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    include: ['test/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    include: ['test/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['test/e2e/**'],
   },
 });
