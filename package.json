@@ -1,6 +1,6 @@
 {
   "name": "agent-hub-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Universal AI agent coordination platform based on Model Context Protocol (MCP)",
   "author": "Gil Barbara <gilbarbara@gmail.com>",
   "keywords": [
