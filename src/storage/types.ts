@@ -11,58 +11,6 @@ import {
 import { AgentRegistration, Message } from '~/types';
 
 /**
- * Extended storage adapter with performance monitoring
- */
-export interface CacheableStorageAdapter extends StorageAdapter {
-  getCacheStats(): CacheStats;
-}
-
-/**
- * Cache performance metrics
- */
-export interface CacheStats {
-  cacheSize: {
-    agents: number;
-    messages: number;
-  };
-  hitRate: number;
-  hits: number;
-  indexHits: number;
-  misses: number;
-  writes: number;
-}
-
-/**
- * Index configuration for optimized queries
- */
-export interface IndexConfig {
-  /**
-   * TTL for cache entries in milliseconds
-   */
-  cacheTtl?: number;
-
-  /**
-   * Fields to index for fast lookups
-   */
-  indexFields: string[];
-
-  /**
-   * Maximum cache size (number of entries)
-   */
-  maxCacheSize?: number;
-}
-
-/**
- * Query result with metadata for optimized operations
- */
-export interface QueryResult<T> {
-  count: number;
-  data: T[];
-  fromCache?: boolean;
-  queryTime?: number;
-}
-
-/**
  * Storage interface for Agent Hub MCP data persistence.
  * Provides abstraction layer for different storage implementations.
  */
