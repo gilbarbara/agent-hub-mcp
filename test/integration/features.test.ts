@@ -229,16 +229,16 @@ describe('Multi-Agent Integration Tests', () => {
         markAsRead: false,
       });
 
-      expect(frontendMessages.count).toBe(2); // Sent frontend message + received backend message
-      expect(backendMessages.count).toBe(2); // Sent backend message + received frontend message
+      expect(frontendMessages.count).toBe(1); // Received backend message (not their own broadcast)
+      expect(backendMessages.count).toBe(1); // Received frontend message (not their own broadcast)
       expect(
         frontendMessages.messages.some((m: Message) =>
-          m.content.includes('Started: Build user authentication UI'),
+          m.content.includes('In Progress: Implement authentication endpoints'),
         ),
       ).toBe(true);
       expect(
         backendMessages.messages.some((m: Message) =>
-          m.content.includes('In Progress: Implement authentication endpoints'),
+          m.content.includes('Started: Build user authentication UI'),
         ),
       ).toBe(true);
     });
@@ -413,7 +413,7 @@ describe('Multi-Agent Integration Tests', () => {
       });
 
       // Verify message-based coordination instead of task status
-      expect(messages.count).toBe(7); // requirements, backend tasks, API spec, and frontend integration (all broadcasted to 'all')
+      expect(messages.count).toBe(5); // requirements, backend tasks, API spec (excluding own broadcasts)
       expect(messages.messages.some((m: Message) => m.content.includes('schema is ready'))).toBe(
         true,
       );
@@ -470,11 +470,13 @@ describe('Multi-Agent Integration Tests', () => {
         markAsRead: false,
       });
 
-      expect(devopsMessages.count).toBe(4); // Updated: emergency alert + incident update + responses from backend and frontend
+      expect(devopsMessages.count).toBe(2); // Responses from backend and frontend (not their own broadcasts)
       expect(
-        devopsMessages.messages.some((m: Message) => m.content.includes('investigating')),
+        devopsMessages.messages.some((m: Message) => m.content.includes('read-only mode')),
       ).toBe(true);
-      expect(devopsMessages.messages.some((m: Message) => m.content.includes('15:00'))).toBe(true);
+      expect(
+        devopsMessages.messages.some((m: Message) => m.content.includes('maintenance banner')),
+      ).toBe(true);
     });
   });
 

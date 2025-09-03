@@ -62,26 +62,20 @@ export class MessageService {
       since: options.since,
     });
 
-    const unreadMessages = messages.filter(m => !m.read && (m.to === agentId || m.to === 'all'));
+    const unreadMessages = messages.filter(
+      m => !m.read && (m.to === agentId || (m.to === 'all' && m.from !== agentId)),
+    );
 
     if (options.markAsRead !== false) {
       // Mark messages as read atomically to prevent race conditions
-      const markAsReadPromises = unreadMessages.map(message => {
-        const markPromise = this.storage.markMessageAsRead(message.id);
-
-        // Ensure we have a proper Promise to work with (defensive programming for mocks)
-        if (markPromise && typeof markPromise.catch === 'function') {
-          return markPromise.catch(error => {
-            // Log error but don't fail the entire operation if one message fails
-            // eslint-disable-next-line no-console
-            console.error(`Failed to mark message ${message.id} as read:`, error);
-
-            return null;
-          });
+      const markAsReadPromises = unreadMessages.map(async message => {
+        try {
+          await this.storage.markMessageAsRead(message.id);
+        } catch (error) {
+          // Log error but don't fail the entire operation if one message fails
+          // eslint-disable-next-line no-console
+          console.error(`Failed to mark message ${message.id} as read:`, error);
         }
-
-        // If markMessageAsRead doesn't return a proper promise, return resolved promise
-        return Promise.resolve();
       });
 
       // Wait for all messages to be marked as read, but don't fail if some fail

@@ -395,6 +395,49 @@ describe('MessageService', () => {
   });
 
   describe('Message Filtering Edge Cases', () => {
+    it('should exclude sender from broadcast messages', async () => {
+      const broadcastMessage = {
+        id: 'broadcast-msg',
+        from: 'sender-agent',
+        to: 'all',
+        type: MessageType.CONTEXT,
+        content: 'Broadcast message',
+        timestamp: Date.now(),
+        read: false,
+        priority: MessagePriority.NORMAL,
+      };
+
+      mockStorage.getMessages.mockResolvedValue([broadcastMessage]);
+
+      // Sender should not receive their own broadcast
+      const result = await messageService.getMessages('sender-agent');
+
+      expect(result.count).toBe(0);
+      expect(result.messages).toHaveLength(0);
+    });
+
+    it('should include broadcast messages for non-senders', async () => {
+      const broadcastMessage = {
+        id: 'broadcast-msg',
+        from: 'sender-agent',
+        to: 'all',
+        type: MessageType.CONTEXT,
+        content: 'Broadcast message',
+        timestamp: Date.now(),
+        read: false,
+        priority: MessagePriority.NORMAL,
+      };
+
+      mockStorage.getMessages.mockResolvedValue([broadcastMessage]);
+
+      // Non-sender should receive broadcast message
+      const result = await messageService.getMessages('recipient-agent');
+
+      expect(result.count).toBe(1);
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0].content).toBe('Broadcast message');
+    });
+
     it('should handle getMessages with invalid since timestamp', async () => {
       mockStorage.getMessages.mockResolvedValue([]);
 
