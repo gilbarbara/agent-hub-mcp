@@ -164,6 +164,11 @@ export class FileStorage implements StorageAdapter {
             passesFilters = false;
           }
 
+          // Exclude broadcast messages sent by the requesting agent (sender shouldn't see their own broadcasts)
+          if (filter.agent && message.to === 'all' && message.from === filter.agent) {
+            passesFilters = false;
+          }
+
           if (filter.type && message.type !== filter.type) {
             passesFilters = false;
           }

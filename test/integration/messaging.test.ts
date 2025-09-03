@@ -367,8 +367,8 @@ describe('Messaging Integration Tests', () => {
         markAsRead: false,
       });
 
-      // Backend should see responses from frontend and mobile + resolution broadcast + initial error
-      expect(backendMessages.count).toBe(4);
+      // Backend should see responses from frontend and mobile (not their own broadcasts)
+      expect(backendMessages.count).toBe(2);
 
       // Each client should see the error broadcast and resolution
       expect(frontendMessages.count).toBe(2);
@@ -412,6 +412,48 @@ describe('Messaging Integration Tests', () => {
       expect(mobileMessages.count).toBe(1);
       expect(frontendMessages.messages[0].content).toContain('API version deployed');
       expect(mobileMessages.messages[0].content).toContain('API version deployed');
+
+      // Verify sender does not receive their own broadcast message
+      const backendMessages = await toolHandlers.get_messages({
+        agent: 'backend-dev',
+        markAsRead: false,
+      });
+
+      expect(backendMessages.count).toBe(0); // Sender should not see their own broadcast
+    });
+
+    it('should exclude sender from broadcast message recipients', async () => {
+      // Frontend sends a broadcast message
+      await toolHandlers.send_message({
+        from: 'frontend-dev',
+        to: 'all',
+        type: MessageType.CONTEXT,
+        content: 'UI component library has been updated',
+      });
+
+      // Check that other agents received the message
+      const backendMessages = await toolHandlers.get_messages({
+        agent: 'backend-dev',
+        markAsRead: false,
+      });
+
+      const mobileMessages = await toolHandlers.get_messages({
+        agent: 'mobile-dev',
+        markAsRead: false,
+      });
+
+      expect(backendMessages.count).toBe(1);
+      expect(mobileMessages.count).toBe(1);
+      expect(backendMessages.messages[0].content).toContain('UI component library');
+      expect(mobileMessages.messages[0].content).toContain('UI component library');
+
+      // Verify the sender (frontend-dev) does not receive their own broadcast
+      const frontendMessages = await toolHandlers.get_messages({
+        agent: 'frontend-dev',
+        markAsRead: false,
+      });
+
+      expect(frontendMessages.count).toBe(0); // Sender should not see their own broadcast
     });
 
     it('should handle mixed broadcast and direct messages correctly', async () => {
