@@ -211,7 +211,6 @@ src/
 
 ### Performance Considerations
 - **File Operations**: All storage operations are synchronous for consistency
-- **Memory Usage**: IndexedStorage keeps frequently accessed data in memory with file backup
 - **Concurrency**: File-based locks prevent corruption but may cause delays
 - **Cleanup**: Old messages auto-expire based on agent activity
 
@@ -219,8 +218,8 @@ src/
 
 ### Common Issues
 
-**1. MCP Schema Caching**
-- **Problem**: Claude Code caches tool schemas, doesn't see changes
+**1. MCP Schema Updates**
+- **Problem**: Claude Code doesn't see schema changes
 - **Solution**: Restart Claude Code completely after schema updates
 
 **2. resources/list_changed Notification**
@@ -303,7 +302,7 @@ src/
 - **Memory Scaling**: All context data loaded into memory
 
 ### Known Integration Issues
-- Claude Code MCP schema caching requires manual restarts
+- Claude Code MCP schema updates require manual restarts
 - Resource list notifications not properly handled by Claude Code
 - Optional parameter validation inconsistencies
 
@@ -525,10 +524,9 @@ try {
 return processFiles(files);
 ```
 
-#### Caching Strategies
-- **Index Utilization**: Use indexes for simple queries, fall back to storage for complex ones
-- **Cache Invalidation**: Implement proper cache invalidation strategies
-- **Memory Limits**: Set and enforce cache size limits to prevent memory exhaustion
+#### Storage Optimization
+- **File Operations**: Optimize file I/O patterns for better performance
+- **Memory Management**: Monitor memory usage for large message volumes
 
 ### Security Implementation Patterns
 
@@ -612,9 +610,35 @@ const allowedOrigins = [
 When reviewing code changes, focus on:
 
 1. **Security**: Input validation, CORS configuration, path traversal prevention
-2. **Performance**: Pagination support, caching strategies, resource management
+2. **Performance**: Pagination support, storage optimization, resource management
 3. **Reliability**: Error handling, race condition prevention, memory management
 4. **Testing**: Coverage of new functionality, error scenarios, edge cases
 5. **Compatibility**: Backward compatibility, interface stability, migration paths
 
 Following these patterns ensures maintainable, secure, and performant code that can evolve without breaking existing functionality.
+
+## Changelog
+
+### 2024-09-02 - Removed IndexedStorage and Caching System
+
+**Problem**: IndexedStorage created cache consistency issues in multi-instance environments. When multiple Claude Code instances used the agent-hub MCP, each had its own cache. Agent registrations in one instance weren't visible to other instances due to cache isolation.
+
+**Root Cause**: Agent caching assumed single-instance usage. When agent B registered through instance 2, agent A (instance 1) couldn't see agent B because its cache wasn't invalidated.
+
+**Solution**: Completely removed IndexedStorage and simplified to FileStorage only.
+
+**Changes Made**:
+- Removed `src/storage/indexed-storage.ts` (524 lines of caching complexity)
+- Removed `test/storage/indexed-storage.test.ts`
+- Updated `src/index.ts` and `src/index-http.ts` to use FileStorage directly
+- Removed IndexedStorage exports from `src/storage/index.ts`
+
+**Benefits**:
+- **Multi-instance reliability**: Agents are immediately visible across all instances
+- **Simplified codebase**: Eliminated 500+ lines of cache management code
+- **No cache invalidation bugs**: File system is single source of truth
+- **Easier debugging**: No cache state to reason about
+
+**Performance Impact**: Minimal for typical usage (2-10 agents, dozens of messages). Reading JSON files is fast enough for this scale.
+
+**Migration**: No user action required. Existing `.agent-hub` data remains compatible.

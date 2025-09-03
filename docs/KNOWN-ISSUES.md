@@ -44,7 +44,7 @@ This document tracks known issues, limitations, and workarounds for the Agent Hu
 
 - **Severity**: 🟡 Minor
 - **Status**: Workaround Available
-- **Issue**: Claude Code aggressively caches MCP tool schemas
+- **Issue**: Claude Code doesn't recognize MCP tool schema changes
 - **Impact**: Schema changes (like making fields optional) are not recognized
 - **Example**: Changing `id` from required to optional in `register_agent` tool
 - **Workaround**: 
@@ -148,3 +148,10 @@ To report new issues:
 - [ ] Authentication system
 - [ ] Database persistence
 - [ ] Clustering support
+
+## See Also
+
+- [Troubleshooting Guide](./TROUBLESHOOTING.md) - Diagnostic steps and solutions
+- [System Overview](./SYSTEM-OVERVIEW.md) - Architecture and technical details
+- [HTTP Configuration](./HTTP-CONFIG.md) - HTTP transport setup
+- [Contributing Guide](./CONTRIBUTING.md) - Development and debugging setup

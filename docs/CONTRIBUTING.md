@@ -81,7 +81,7 @@ src/
 ├── features/        # Multi-agent collaboration system
 ├── servers/         # HTTP/MCP servers
 ├── tools/           # MCP tool definitions
-├── storage/         # File-based and indexed persistence
+├── storage/         # File-based persistence
 ├── validation/      # Input validation and security
 └── types.ts         # TypeScript types
 ```
@@ -125,8 +125,24 @@ Configure with HTTP transport:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3737` | HTTP server port |
-| `AGENT_HUB_DATA_DIR` | `~/.agent-hub` | Storage directory |
+| `AGENT_HUB_DATA_DIR` | `~/.agent-hub` | Storage directory path |
 | `DEBUG` | - | Enable debug logging (`DEBUG=agent-hub:*`) |
+
+### Usage Examples
+
+```bash
+# Custom storage directory
+AGENT_HUB_DATA_DIR=/custom/path/.agent-hub pnpm run dev
+
+# Custom HTTP port  
+PORT=5000 pnpm run dev
+
+# Enable debug logging
+DEBUG=agent-hub:* pnpm run dev
+
+# Combined
+AGENT_HUB_DATA_DIR=/custom/path PORT=5000 DEBUG=agent-hub:* pnpm run dev
+```
 
 ## Debugging
 
@@ -163,3 +179,10 @@ Before submitting:
 ## Questions?
 
 Open an issue or discussion on GitHub for help.
+
+## See Also
+
+- [System Overview](./SYSTEM-OVERVIEW.md) - Complete architecture and design patterns
+- [HTTP Configuration](./HTTP-CONFIG.md) - HTTP transport setup for development
+- [Troubleshooting](./TROUBLESHOOTING.md) - Common development issues and solutions  
+- [Known Issues](./KNOWN-ISSUES.md) - Current limitations to be aware of
