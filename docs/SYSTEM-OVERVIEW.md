@@ -151,7 +151,7 @@ graph TB
 
 ### 5. Agent Management (src/agents/)
 
-Handles agent registration, detection, and lifecycle management.
+Handles agent detection, service, and lifecycle management.
 
 ```mermaid
 graph TB
@@ -189,16 +189,12 @@ graph TB
 The system supports two storage implementations:
 
 ### File Storage (src/storage/file-storage.ts)
-- Direct file system operations
-- Simple JSON serialization
-- Directory-based organization
-- Atomic write operations
-
-### Indexed Storage (src/storage/indexed-storage.ts)
-- In-memory caching with file persistence
-- Indexed queries for performance
-- Cache statistics and monitoring
-- Optimized for frequent reads
+- **Direct file system operations** - No caching layer for multi-instance reliability
+- **Simple JSON serialization** - Human-readable storage format
+- **Directory-based organization** - Logical separation of data types
+- **Atomic write operations** - Prevents data corruption during writes
+- **Cross-platform paths** - Works on Windows, macOS, Linux
+- **File permissions** - Secure storage directory access (755)
 
 ```mermaid
 graph TB
@@ -227,11 +223,12 @@ graph TB
 - Direct MCP integration
 - Manual agent registration required
 - Best for local development and production
+- Multi-instance.
 
 ### 2. HTTP Transport (Development/Debug)
 - RESTful API with Server-Sent Events
 - Browser-compatible debugging
-- Auto-discovery and session management
+- Auto-discovery and session management 
 - Web dashboard capabilities
 
 ```mermaid
@@ -242,7 +239,6 @@ sequenceDiagram
     participant A as Other Agent
     
     C->>M: Tool Call (send_message)
-    M->>M: Auto-register Agent
     M->>S: Save Message
     M->>A: Notification (optional)
     S-->>M: Success
@@ -369,8 +365,24 @@ The system includes security measures:
 ```bash
 # Monitor storage directory
 ls -la ~/.agent-hub/
-ls -la ~/.agent-hub/messages/
-ls -la ~/.agent-hub/context/
+ls -la ~/.agent-hub/messages/    # Agent message queues
+ls -la ~/.agent-hub/agents/      # Agent registrations  
+ls -la ~/.agent-hub/features/    # Feature collaboration data
+
+# Storage directory structure:
+# .agent-hub/
+# ├── messages/           # Individual agent message files
+# │   ├── agent-1.json   
+# │   └── agent-2.json
+# ├── agents/            # Agent registration files
+# │   ├── agent-1.json
+# │   └── agent-2.json
+# └── features/          # Feature-based collaboration
+#     ├── feature-123/
+#     │   ├── feature.json
+#     │   ├── tasks.json
+#     │   └── delegations.json
+#     └── feature-456/
 ```
 
 ### HTTP Dashboard (Development):
@@ -402,17 +414,15 @@ graph TB
     end
     
     subgraph "Future (v1.0+)"
-        MICRO[Microservices Architecture]
         DB[Database Backend]
         REMOTE[Remote Access Support]
         DASH[Web Dashboard]
         AUTH[Authentication Layer]
     end
     
-    MONO --> MICRO
+    MONO --> DASH
     FILE --> DB
     LOCAL --> REMOTE
-    MICRO --> DASH
     REMOTE --> AUTH
 ```
 

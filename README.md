@@ -233,22 +233,15 @@ Structured multi-agent coordination:
 - Progress tracking through subtasks
 - Context sharing within feature boundaries
 
-## Available MCP Tools
+## Key MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `register_agent` | Register/reconnect an agent |
-| `send_message` | Send messages between agents |
-| `get_messages` | Retrieve agent messages |
-| `get_hub_status` | Get hub activity overview |
-| `create_feature` | Start multi-agent projects |
-| `create_task` | Break features into delegated work |
-| `create_subtask` | Track implementation steps |
-| `accept_delegation` | Accept assigned work |
-| `update_subtask` | Report progress |
-| `get_agent_workload` | View all work assigned to agent |
-| `get_features` | List features with filtering |
-| `get_feature` | Get complete feature data |
+Core tools for multi-agent collaboration:
+- `register_agent` - Register/reconnect an agent
+- `send_message` / `get_messages` - Inter-agent communication  
+- `get_hub_status` - Hub activity overview
+- `create_feature` / `create_task` - Multi-agent project coordination
+
+See [System Overview](./docs/SYSTEM-OVERVIEW.md) for complete tool reference and architecture details.
 
 ## 🚀 How Multi-Agent Collaboration Works
 
@@ -356,12 +349,12 @@ If your AI assistant supports MCP, use these settings:
 
 ## Troubleshooting
 
-⚠️ Having issues? See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md)
-
 Common issues:
 - MCP server not connecting → Restart AI assistant
 - Commands not recognized → Check custom commands installation
 - Agent ID conflicts → Use unique IDs per project
+
+📖 **Need help?** See [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) for comprehensive solutions.
 
 ## Requirements
 
@@ -380,10 +373,10 @@ See [Contributing Guide](./docs/CONTRIBUTING.md) for development setup and guide
 
 ## Documentation
 
-- [Contributing](./docs/CONTRIBUTING.md) - Development setup and guidelines
-- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Known Issues](./docs/KNOWN-ISSUES.md) - Current limitations
-- [System Overview](./docs/SYSTEM-OVERVIEW.md) - Architecture details
+- **[System Overview](./docs/SYSTEM-OVERVIEW.md)** - Complete architecture and tool reference
+- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Solutions for common issues  
+- **[Known Issues](./docs/KNOWN-ISSUES.md)** - Current limitations and workarounds
+- **[Contributing](./docs/CONTRIBUTING.md)** - Development setup and guidelines
 
 ## License
 

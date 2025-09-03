@@ -74,12 +74,7 @@ GET /mcp     # Receive SSE notifications
 DELETE /mcp  # Terminate session
 ```
 
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | HTTP server port |
-| `AGENT_HUB_DATA_DIR` | `.agent-hub` | Data storage directory |
+See [CONTRIBUTING.md](./CONTRIBUTING.md#environment-variables) for environment variable configuration.
 
 ## Notifications (Limited by Claude Code)
 
@@ -114,86 +109,16 @@ pnpm run dev
 
 Configure different Claude Code instances to use different transports.
 
-## Agent Registration (Updated September 2025)
+For known issues and troubleshooting, see:
+- [Known Issues](./KNOWN-ISSUES.md) - Schema updates, parameter validation
+- [Troubleshooting Guide](./TROUBLESHOOTING.md) - HTTP connection issues, port conflicts
 
-### Clean Agent IDs & Persistence
-
-The hub now provides persistent agent identities without random suffixes:
-
-```javascript
-// Register with explicit ID
-register_agent({
-  id: "my-agent",
-  projectPath: "/Users/name/my-project",
-  role: "Frontend Developer"
-})
-
-// Or auto-generate from project path
-register_agent({
-  projectPath: "/Users/name/my-project",
-  role: "Frontend Developer"
-})
-// Generated ID: "my-project" (clean ID, no suffix)
-```
-
-### Registration Behavior
-
-1. **Clean IDs**: No random suffixes - agents get predictable IDs
-2. **Project Path Identity**: Agents uniquely identified by project path
-3. **Automatic Reconnection**: Same path reconnects to existing agent
-4. **ID Conflict Prevention**: Can't use existing ID with different project path
-
-### Registration Scenarios
-
-- **New Agent**: Fresh project path → Creates new agent
-- **Reconnection**: Same project path → "Welcome back" message, preserves data
-- **ID Conflict**: Existing ID + different path → Registration rejected
-- **Path Priority**: Different ID + same path → Reconnects by path
-
-### Important Notes
-
-- Agent data persists across Claude restarts
-- Messages and context preserved when reconnecting
-- Sessions without agents (`agent: null`) are normal until registration
-
-## Known Issues & Workarounds
-
-### Claude Code Integration
-
-1. **resources/list_changed Not Working**
-   - **Issue**: Claude Code doesn't refresh resource list when notification is sent
-   - **Workaround**: Restart Claude Code to see new resources
-   - **Status**: Tracking with Anthropic team
-
-2. **Schema Caching**
-   - **Issue**: Claude Code caches MCP tool schemas, not recognizing updates
-   - **Workaround**: Full restart of Claude Code after schema changes
-   - **Example**: Making `id` field optional in `register_agent`
-
-3. **Optional Parameters Validation**
-   - **Issue**: Client-side validation may require "optional" fields
-   - **Workaround**: Always provide all fields even if marked optional
-
-## Troubleshooting
-
-### Port Conflicts
-```bash
-# Check what's using the port
-lsof -i :3737
-
-# Use a different port
-PORT=3838 pnpm run dev
-```
-
-### Connection Issues
-- Ensure server is running: `curl http://localhost:3737/ping`
-- Check Claude Code logs for MCP errors
-- Verify configuration syntax in Claude settings
-
-### CORS Issues (if using browser clients)
-The server includes CORS headers for development. For production:
-- Configure `allowedOrigins` in the transport
-- Enable DNS rebinding protection
-- Use HTTPS for secure connections
 
 The HTTP transport provides a much better experience for multi-agent collaboration! 🚀
+
+## See Also
+
+- [System Overview](./SYSTEM-OVERVIEW.md) - Complete architecture and storage details
+- [Contributing Guide](./CONTRIBUTING.md) - Development setup and environment variables  
+- [Troubleshooting](./TROUBLESHOOTING.md) - HTTP connection issues and debugging
+- [Known Issues](./KNOWN-ISSUES.md) - Claude Code integration limitations

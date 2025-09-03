@@ -68,9 +68,9 @@ npx -y agent-hub-mcp@latest --help
 
 ## MCP Client Issues
 
-### Schema Caching
+### Schema Updates
 **Problem**: Changes to tools don't appear
-**Solution**: Restart Claude Code completely (schema is cached)
+**Solution**: Restart Claude Code completely
 
 ### Resource List Not Updating
 **Problem**: New resources don't show automatically
@@ -110,6 +110,29 @@ npx -y agent-hub-mcp@latest --help
 - ✅ Server running on port 3737 (`pnpm run dev`)
 - ✅ No firewall blocking localhost
 - ✅ Correct URL: `http://localhost:3737/mcp`
+
+**Port Conflicts**:
+```bash
+# Check what's using the port
+lsof -i :3737
+
+# Use a different port
+PORT=3838 pnpm run dev
+```
+
+**Connection Testing**:
+```bash
+# Test server is responding
+curl http://localhost:3737/ping
+
+# Should return: {"status":"ok","timestamp":...}
+```
+
+**CORS Issues** (if using browser clients):
+- Server includes CORS headers for development
+- For production: Configure `allowedOrigins` in transport
+- Enable DNS rebinding protection  
+- Use HTTPS for secure connections
 
 ## Message Delivery
 
@@ -165,3 +188,10 @@ Check logs for:
    - Error messages
    - Configuration used
    - Steps to reproduce
+
+## See Also
+
+- [System Overview](./SYSTEM-OVERVIEW.md) - Architecture and storage monitoring
+- [HTTP Configuration](./HTTP-CONFIG.md) - HTTP transport setup
+- [Contributing Guide](./CONTRIBUTING.md) - Development environment setup
+- [Known Issues](./KNOWN-ISSUES.md) - Current limitations and workarounds
