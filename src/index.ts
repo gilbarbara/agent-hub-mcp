@@ -6,20 +6,13 @@ import { AgentService } from './agents/service';
 import { FeaturesService } from './features/service';
 import { MessageService } from './messaging/service';
 import { createMcpServer } from './servers/mcp';
-import { FileStorage, IndexedStorage, StorageAdapter } from './storage';
+import { FileStorage } from './storage';
 
-// Choose storage implementation based on environment variable
-function createStorage(): StorageAdapter {
+// Use FileStorage directly for simplicity and reliability
+function createStorage(): FileStorage {
   const dataDirectory = process.env.AGENT_HUB_DATA_DIR ?? '~/.agent-hub';
-  const storageType = process.env.AGENT_HUB_STORAGE_TYPE ?? 'indexed';
 
-  switch (storageType.toLowerCase()) {
-    case 'file':
-      return new FileStorage(dataDirectory);
-    case 'indexed':
-    default:
-      return new IndexedStorage(dataDirectory);
-  }
+  return new FileStorage(dataDirectory);
 }
 
 const storage = createStorage();
