@@ -1,5 +1,4 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createId } from '@paralleldrive/cuid2';
 import cors from 'cors';
 import express, { type Express } from 'express';
@@ -18,6 +17,28 @@ export interface HttpServerDependencies {
   agentService: AgentService;
   messageService: MessageService;
   storage: StorageAdapter;
+}
+
+// JSON-RPC 2.0 compliant error helper
+function createJsonRpcError(code: number, message: string, data?: any, id: any = null) {
+  return {
+    jsonrpc: '2.0',
+    error: { code, message, ...(data && { data }) },
+    id,
+  };
+}
+
+// More lenient initialization check for Claude Code compatibility
+function isInitializeRequest(body: any): boolean {
+  return (
+    body &&
+    body.jsonrpc === '2.0' &&
+    body.method === 'initialize' &&
+    body.params &&
+    typeof body.params === 'object' &&
+    body.params.protocolVersion &&
+    body.params.capabilities
+  );
 }
 
 export function createHttpServer(deps: HttpServerDependencies): Express {
@@ -125,7 +146,7 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
 
     // Validate request body exists
     if (!request.body || typeof request.body !== 'object') {
-      response.status(400).json({ error: 'Invalid request body' });
+      response.status(400).json(createJsonRpcError(-32700, 'Parse error: Invalid request body'));
 
       return;
     }
@@ -136,7 +157,6 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
       // Reuse existing session
       session = sessionManager.get(sessionId)!;
     } else if (!sessionId && isInitializeRequest(request.body)) {
-      // New initialization request
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => createId(),
         onsessioninitialized: async newSessionId => {
@@ -196,15 +216,19 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
         server,
       };
     } else {
-      // Invalid request
-      response.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: null,
-      });
+      // Invalid request - missing session ID for non-initialize request
+      const requestId = request.body?.id || null;
+
+      response
+        .status(400)
+        .json(
+          createJsonRpcError(
+            -32600,
+            'Invalid Request: No valid session ID provided and not an initialize request',
+            undefined,
+            requestId,
+          ),
+        );
 
       return;
     }
@@ -219,13 +243,15 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
 
     // Validate session ID format
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length === 0) {
-      response.status(400).json({ error: 'Invalid or missing session ID' });
+      response
+        .status(400)
+        .json(createJsonRpcError(-32602, 'Invalid params: Invalid or missing session ID'));
 
       return;
     }
 
     if (!sessionManager.has(sessionId)) {
-      response.status(404).json({ error: 'Session not found' });
+      response.status(404).json(createJsonRpcError(-32001, 'Session not found'));
 
       return;
     }
@@ -246,13 +272,15 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
 
     // Validate session ID format
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length === 0) {
-      response.status(400).json({ error: 'Invalid or missing session ID' });
+      response
+        .status(400)
+        .json(createJsonRpcError(-32602, 'Invalid params: Invalid or missing session ID'));
 
       return;
     }
 
     if (!sessionManager.has(sessionId)) {
-      response.status(404).json({ error: 'Session not found' });
+      response.status(404).json(createJsonRpcError(-32001, 'Session not found'));
 
       return;
     }

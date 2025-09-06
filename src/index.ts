@@ -25,15 +25,70 @@ const agentService = new AgentService(storage, featuresService, messageService);
 async function main() {
   await storage.init();
 
-  // Create MCP server with all the services
+  // For stdio transport, we have a single server instance
+  let mcpServer: any = null;
+
+  // Notification functions for stdio transport
+  async function broadcastNotification(method: string, _params: any) {
+    if (mcpServer) {
+      // eslint-disable-next-line no-console
+      console.error(`📡 Broadcasting ${method} via stdio transport`);
+
+      try {
+        // Use MCP's built-in resource list changed notification
+        await mcpServer.sendResourceListChanged();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error sending notification via stdio:', error);
+      }
+    }
+  }
+
+  async function sendNotificationToAgent(agentId: string, method: string, _params: any) {
+    if (mcpServer) {
+      // eslint-disable-next-line no-console
+      console.error(`📤 Sending ${method} to agent ${agentId} via stdio transport`);
+
+      try {
+        // For stdio, we send to the single connected client
+        await mcpServer.sendResourceListChanged();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error sending notification to agent via stdio:', error);
+      }
+    }
+  }
+
+  async function sendResourceNotification(agentId: string, resourceUri: string) {
+    if (mcpServer) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `🔄 Sending resource notification to ${agentId} for ${resourceUri} via stdio transport`,
+      );
+
+      try {
+        // For stdio, we send resources/list_changed to the single connected client
+        // The client should then re-read all resources including the changed one
+        await mcpServer.sendResourceListChanged();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error sending resource notification via stdio:', error);
+      }
+    }
+  }
+
+  // Create MCP server with proper notification handlers
   const server = createMcpServer({
     storage,
     messageService,
     agentService,
-    broadcastNotification: async () => {}, // No-op for stdio transport
-    getCurrentSession: () => undefined,
-    sendNotificationToAgent: async () => {}, // No-op for stdio transport
+    broadcastNotification,
+    getCurrentSession: () => undefined, // No session management for stdio
+    sendNotificationToAgent,
+    sendResourceNotification,
   });
+
+  mcpServer = server;
 
   const transport = new StdioServerTransport();
 
