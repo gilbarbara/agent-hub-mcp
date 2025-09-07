@@ -2,7 +2,7 @@ name: Quality Assurance
 
 on:
   push:
-    branches: ['dev', 'main']
+    branches: ['main']
     tags: ['v*']
   pull_request:
     branches: ['*']
