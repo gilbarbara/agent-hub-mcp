@@ -9,7 +9,7 @@ import { MessageService } from '~/messaging/service';
 import { StorageAdapter } from '~/storage';
 import { validateToolInput } from '~/validation';
 
-import { AgentRegistration } from '~/types';
+import { AgentRegistration, SyncErrorResult, SyncResult } from '~/types';
 
 export interface ToolHandlerServices {
   agentService: AgentService;
@@ -214,10 +214,6 @@ export function createToolHandlers(services: ToolHandlerServices) {
       return featuresHandler.handleFeatureTool('create_subtask', arguments_);
     },
 
-    async get_agent_workload(arguments_: any) {
-      return featuresHandler.handleFeatureTool('get_agent_workload', arguments_);
-    },
-
     async get_features(arguments_: any) {
       return featuresHandler.handleFeatureTool('get_features', arguments_);
     },
@@ -254,6 +250,56 @@ export function createToolHandlers(services: ToolHandlerServices) {
       }
 
       return result;
+    },
+
+    async sync(arguments_: any): Promise<SyncResult | SyncErrorResult> {
+      const validatedArguments = validateToolInput('sync', arguments_);
+      const agentId = validatedArguments.agentId as string;
+      const markAsRead = validatedArguments.markAsRead !== false; // Default to true
+
+      try {
+        // Execute all sync operations in parallel
+        const [messagesResult, workloadRaw, hubStatusResult] = await Promise.all([
+          messageHandlers.get_messages({ agent: agentId, markAsRead }),
+          services.storage.getAgentWorkload(agentId),
+          services.agentService.getHubStatus(),
+        ]);
+
+        // Flatten workload result structure for clarity
+        const workloadResult = {
+          success: true,
+          activeFeatures: workloadRaw.activeFeatures,
+          summary: {
+            totalFeatures: workloadRaw.activeFeatures.length,
+            totalDelegations: workloadRaw.activeFeatures.reduce(
+              (sum, f) => sum + f.myDelegations.length,
+              0,
+            ),
+            featuresByPriority: workloadRaw.activeFeatures.reduce(
+              (acc, f) => {
+                acc[f.feature.priority] = (acc[f.feature.priority] || 0) + 1;
+
+                return acc;
+              },
+              {} as Record<string, number>,
+            ),
+          },
+        };
+
+        return {
+          success: true,
+          timestamp: Date.now(),
+          messages: messagesResult,
+          workload: workloadResult,
+          hubStatus: hubStatusResult,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+          timestamp: Date.now(),
+        };
+      }
     },
   };
 }

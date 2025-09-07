@@ -108,7 +108,7 @@ register_agent({"id": "react-app", "projectPath": "/Users/name/my-react-app", "r
 register_agent({"id": "api-server", "projectPath": "/Users/name/my-api", "role": "Backend Developer"})
 
 After registration you'll be able to:
-✓ Exchange messages with other agents (check manually with get_messages)
+✓ Exchange messages with other agents (use sync to stay updated)
 ✓ Create and collaborate on features (multi-agent projects)
 ✓ Delegate tasks to specific agents with clear scope
 ✓ Track implementation progress with subtasks
@@ -119,14 +119,13 @@ After registration you'll be able to:
 3. accept_delegation - Accept work assigned to you
 4. create_subtask - Track your implementation steps
 5. update_subtask - Report progress on your work
-6. get_agent_workload - See all your assigned work
 
 💬 Communication:
 • send_message - Send messages to other agents
-• get_messages - Check for new messages (manual check required)
+• sync - Get messages, workload, and status in one comprehensive call
 • get_hub_status - See hub activity, agents, and collaboration opportunities
 
-Note: Messages are stored instantly but require manual checking with get_messages.
+Note: Messages are stored instantly but require manual checking with sync.
 Claude Code uses a pull-only model - no automatic notifications.
 
 ${

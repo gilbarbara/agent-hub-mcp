@@ -419,14 +419,14 @@ describe('MCP Protocol Compliance', () => {
         // Messaging tools (2)
         'send_message',
         'get_messages',
-        // Agent management tools (2)
+        // Agent management tools (3)
         'register_agent',
         'get_hub_status',
-        // Features System tools (8)
+        'sync',
+        // Features System tools (7)
         'create_feature',
         'create_task',
         'create_subtask',
-        'get_agent_workload',
         'get_features',
         'get_feature',
         'accept_delegation',

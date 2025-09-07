@@ -405,13 +405,17 @@ describe('Agent Hub MCP HTTP Transport E2E Tests', () => {
       }
     });
 
-    it('should track agent workload via HTTP', async () => {
-      const workloadResult = await callTool('get_agent_workload', {
+    it('should track agent workload via HTTP sync', async () => {
+      const syncResult = await callTool('sync', {
         agentId: 'http-test-agent',
       });
 
-      expect(workloadResult.success).toBe(true);
-      expect(workloadResult.workload).toBeDefined();
+      expect(syncResult.success).toBe(true);
+      expect(syncResult.workload).toBeDefined();
+      expect(syncResult.workload.activeFeatures).toEqual([]);
+      expect(syncResult.workload.summary).toBeDefined();
+      expect(syncResult.messages).toBeDefined();
+      expect(syncResult.hubStatus).toBeDefined();
     });
   });
 });

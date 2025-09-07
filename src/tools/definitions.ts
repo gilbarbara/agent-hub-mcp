@@ -174,17 +174,6 @@ export const TOOLS: Tool[] = [
     },
   },
   {
-    name: 'get_agent_workload',
-    description: 'Get all work assigned to an agent across all features',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        agentId: { type: 'string', description: 'Agent ID to get workload for' },
-      },
-      required: ['agentId'],
-    },
-  },
-  {
     name: 'get_features',
     description: 'Get list of features with optional filtering',
     inputSchema: {
@@ -247,6 +236,22 @@ export const TOOLS: Tool[] = [
         updatedBy: { type: 'string', description: 'Agent updating this subtask' },
       },
       required: ['featureId', 'subtaskId', 'updatedBy'],
+    },
+  },
+  {
+    name: 'sync',
+    description: 'Comprehensive sync with the hub - get messages, workload, and status in one call',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agentId: { type: 'string', description: 'Agent ID to sync for' },
+        markAsRead: {
+          type: 'boolean',
+          description: 'Mark retrieved messages as read',
+          default: true,
+        },
+      },
+      required: ['agentId'],
     },
   },
 ];

@@ -27,8 +27,6 @@ export class FeaturesHandler {
         return this.createTask(validatedArguments);
       case 'create_subtask':
         return this.createSubtask(validatedArguments);
-      case 'get_agent_workload':
-        return this.getAgentWorkload(validatedArguments);
       case 'get_features':
         return this.getFeatures(validatedArguments);
       case 'get_feature':
@@ -120,37 +118,6 @@ export class FeaturesHandler {
         success: true,
         subtasks,
         message: `Created ${subtasks.length} subtask(s) for delegation ${arguments_.delegationId}`,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
-
-  private async getAgentWorkload(arguments_: any): Promise<any> {
-    try {
-      const workload = await this.service.getAgentWorkload(arguments_.agentId);
-
-      return {
-        success: true,
-        workload,
-        summary: {
-          totalFeatures: workload.activeFeatures.length,
-          totalDelegations: workload.activeFeatures.reduce(
-            (sum, f) => sum + f.myDelegations.length,
-            0,
-          ),
-          featuresByPriority: workload.activeFeatures.reduce(
-            (acc, f) => {
-              acc[f.feature.priority] = (acc[f.feature.priority] || 0) + 1;
-
-              return acc;
-            },
-            {} as Record<string, number>,
-          ),
-        },
       };
     } catch (error: any) {
       return {

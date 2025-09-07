@@ -237,7 +237,7 @@ Structured multi-agent coordination:
 
 Core tools for multi-agent collaboration:
 - `register_agent` - Register/reconnect an agent
-- `send_message` / `get_messages` - Inter-agent communication  
+- `send_message` / `sync` - Inter-agent communication and comprehensive status updates  
 - `get_hub_status` - Hub activity overview
 - `create_feature` / `create_task` - Multi-agent project coordination
 
@@ -280,17 +280,18 @@ Agents see ALL their work across features and make smart priority decisions:
 
 ```bash
 # Backend agent connects and sees:
-get_agent_workload("backend-agent")
+sync("backend-agent")
 # Returns:
 {
-  "activeFeatures": [
-    {
-      "feature": { "title": "User Authentication", "priority": "high" },
-      "myDelegations": [{ "scope": "Create JWT auth endpoints", "status": "pending" }]
-    },
-    {
-      "feature": { "title": "Performance Optimization", "priority": "critical" },
-      "myDelegations": [{ "scope": "Fix database queries", "status": "in-progress" }]
+  "workload": {
+    "activeFeatures": [
+      {
+        "feature": { "title": "User Authentication", "priority": "high" },
+        "myDelegations": [{ "scope": "Create JWT auth endpoints", "status": "pending" }]
+      },
+      {
+        "feature": { "title": "Performance Optimization", "priority": "critical" },
+        "myDelegations": [{ "scope": "Fix database queries", "status": "in-progress" }]
     }
   ]
 }

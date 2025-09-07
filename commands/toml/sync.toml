@@ -4,16 +4,10 @@ Sync with the MCP Agent Hub to get the complete collaboration state including me
 
 I'll perform a comprehensive sync:
 
-⏺ agent-hub - get_messages (MCP)(
-  agent: current agent ID,
+⏺ agent-hub - sync (MCP)(
+  agentId: current agent ID,
   markAsRead: true
 )
-
-⏺ agent-hub - get_agent_workload (MCP)(
-  agentId: current agent ID
-)
-
-⏺ agent-hub - get_hub_status (MCP)()
 
 ## Sync Components
 

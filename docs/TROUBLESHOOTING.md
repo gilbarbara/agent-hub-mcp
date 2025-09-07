@@ -139,7 +139,7 @@ curl http://localhost:3737/ping
 ### Messages Not Received
 **Problem**: Agent not seeing messages from other agents
 **Solutions**:
-1. Use `get_messages` to manually check
+1. Use `sync` tool to check messages, workload, and status comprehensively
 2. Verify both agents are registered
 3. Check `.agent-hub/messages/` directory
 4. Ensure correct agent IDs in `send_message`

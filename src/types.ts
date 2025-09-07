@@ -35,3 +35,37 @@ export interface Message {
   to: 'all' | (string & {});
   type: MessageType;
 }
+
+export interface MessagesResponse {
+  count: number;
+  messages: Message[];
+}
+
+export interface SyncErrorResult {
+  error: string;
+  success: false;
+  timestamp: number;
+}
+
+export interface SyncResult {
+  hubStatus: any; // HubStatusResult type from agents/service.ts
+  messages: {
+    count: number;
+    messages: Message[];
+  };
+  success: boolean;
+  timestamp: number;
+  workload: SyncWorkloadResult;
+}
+
+export interface SyncWorkloadResult {
+  activeFeatures: any[]; // Using AgentFeatureWork[] from features/types.ts would create circular import
+  success: boolean;
+  summary: WorkloadSummary;
+}
+
+export interface WorkloadSummary {
+  featuresByPriority: Record<string, number>;
+  totalDelegations: number;
+  totalFeatures: number;
+}

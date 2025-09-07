@@ -384,14 +384,17 @@ describe('Agent Hub MCP stdio Transport E2E Tests', () => {
       });
     });
 
-    it('should track agent workload', async () => {
-      const workloadResult = await callTool('get_agent_workload', {
+    it('should track agent workload via sync', async () => {
+      const syncResult = await callTool('sync', {
         agentId: 'test-agent',
       });
 
-      expect(workloadResult.success).toBe(true);
-      // Note: workload response structure may differ from expected
-      expect(workloadResult.workload).toBeDefined();
+      expect(syncResult.success).toBe(true);
+      expect(syncResult.workload).toBeDefined();
+      expect(syncResult.workload.activeFeatures).toEqual([]);
+      expect(syncResult.workload.summary).toBeDefined();
+      expect(syncResult.messages).toBeDefined();
+      expect(syncResult.hubStatus).toBeDefined();
     });
   });
 });

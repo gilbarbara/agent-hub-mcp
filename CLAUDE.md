@@ -62,7 +62,7 @@ pnpm run coverage  # Test coverage report
    - Notify user: "Connected to Agent Hub as [agent-id]"
 
 2. **Stay synchronized**:
-   - Periodically check for messages, workload updates, and hub changes
+   - Use `sync` tool periodically to get messages, workload updates, and hub changes in one call
    - Inform user of any pending collaboration work
    - Example: "📬 You have 3 messages from frontend-agent about API changes"
 
@@ -158,7 +158,20 @@ Agent Hub MCP is a Model Context Protocol (MCP) server that enables communicatio
 
 ### Communication & Sync
 - `send_message(from, to, type, content, [priority], [threadId], [metadata])` - Send message to agent(s)
-- `get_messages(agent, [since], [type], [markAsRead])` - Retrieve messages for agent
+- `sync(agentId, [markAsRead])` - Comprehensive sync: get messages, workload, and status in one call
+- `get_messages(agent, [since], [type], [markAsRead])` - Retrieve messages for agent (use sync instead)
+
+**Usage Example:**
+```javascript
+// ❌ Old approach - multiple calls
+const messages = await get_messages({agent: "frontend-agent"});
+const status = await get_hub_status();
+// Missing workload information
+
+// ✅ Preferred approach - single comprehensive call
+const result = await sync({agentId: "frontend-agent"});
+// Gets messages + workload + hub status in one efficient call
+```
 ### Agent Coordination
 - `register_agent(id, projectPath, role, [capabilities], [collaboratesWith])` - Register/reconnect agent
   - Validates for ID conflicts (can't use existing ID with different project path)
@@ -170,7 +183,6 @@ Agent Hub MCP is a Model Context Protocol (MCP) server that enables communicatio
 - `create_feature(name, title, description, priority, [estimatedAgents], createdBy)` - Create new multi-agent feature
 - `create_task(featureId, title, description, delegations[], createdBy)` - Create task with agent delegations
 - `create_subtask(featureId, delegationId, subtasks[], createdBy)` - Create implementation subtasks
-- `get_agent_workload(agentId)` - Get all work assigned to agent across features
 - `get_features([status], [priority], [agent], [createdBy])` - List features with filtering
 - `get_feature(featureId)` - Get complete feature data including tasks and delegations
 - `accept_delegation(featureId, delegationId, agentId)` - Accept work assigned to agent

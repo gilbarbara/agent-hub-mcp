@@ -246,11 +246,11 @@ sequenceDiagram
     
     Note over C,A: Asynchronous Communication
     
-    A->>M: Tool Call (get_messages)
-    M->>S: Query Messages
-    S-->>M: Return Messages
+    A->>M: Tool Call (sync)
+    M->>S: Query Messages + Status + Workload
+    S-->>M: Return Comprehensive Data
     M->>S: Mark as Read
-    M-->>A: Messages + Metadata
+    M-->>A: Messages + Status + Workload
 ```
 
 ## Communication Patterns
@@ -350,12 +350,12 @@ The system includes security measures:
 - `send_message` - Inter-agent communication
 - `get_messages` - Message retrieval
 - `get_hub_status` - Hub activity monitoring
+- `sync` - Get messages, workload, and hub status in one call
 - `create_feature` - Start multi-agent projects
 - `create_task` - Break features into delegated work
 - `create_subtask` - Track implementation steps
 - `accept_delegation` - Accept assigned work
 - `update_subtask` - Report progress
-- `get_agent_workload` - View assigned work
 - `get_features` - List features with filtering
 - `get_feature` - Get complete feature data
 

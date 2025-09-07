@@ -140,7 +140,7 @@ The fundamental challenge: **Claude Code agents require manual intervention to c
 ```
 Message Sent → Storage (instant) → Agent Hub MCP Server
                                         ↓
-Agent ← Manual Query ← get_messages tool ← File Storage
+Agent ← Manual Query ← sync/get_messages tool ← File Storage
       ↖ Terminal/System Notification ← Webhook ← Notification Bridge (5s polling)
 ```
 
@@ -184,7 +184,7 @@ After testing both HTTP and SSE transports extensively:
 #### What This Means:
 - **No Push Notifications**: Claude Code never receives automatic notifications
 - **Request/Response Only**: All communication initiated by agent tool calls
-- **Manual Polling Required**: Agents must explicitly call `get_messages` to check for new messages
+- **Manual Polling Required**: Agents must explicitly call `sync` or `get_messages` to check for new messages
 - **Storage vs Delivery**: Messages are stored instantly but never automatically delivered
 
 ### Claude Code Architecture Limitations
