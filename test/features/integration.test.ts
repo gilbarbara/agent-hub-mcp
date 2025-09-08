@@ -5,6 +5,8 @@ import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { FeaturesService } from '~/features/service';
+import { FileStorage } from '~/storage/file-storage';
+
 import {
   CreateFeatureInput,
   CreateTaskInput,
@@ -13,8 +15,7 @@ import {
   FeatureStatus,
   SubtaskStatus,
   TaskStatus,
-} from '~/features/types';
-import { FileStorage } from '~/storage/file-storage';
+} from '~/types';
 
 describe('Features Integration Tests', () => {
   let tempDirectory: string;
@@ -43,6 +44,7 @@ describe('Features Integration Tests', () => {
         description: 'Add chat-only agent support across backend, frontend, and mobile',
         priority: FeaturePriority.HIGH,
         estimatedAgents: ['backend-agent', 'frontend-agent', 'mobile-agent'],
+        createdBy: 'coordinator-agent',
       };
 
       const feature = await service.createFeature(featureInput, 'coordinator-agent');
@@ -60,6 +62,8 @@ describe('Features Integration Tests', () => {
       const taskInput: CreateTaskInput = {
         title: 'Implement chat infrastructure',
         description: 'Add chat support across all platforms',
+        createdBy: 'coordinator-agent',
+        featureId: feature.id,
         delegations: [
           { agent: 'backend-agent', scope: 'Add chat API endpoints and WebSocket support' },
           { agent: 'frontend-agent', scope: 'Build chat UI components and real-time messaging' },
@@ -124,6 +128,9 @@ describe('Features Integration Tests', () => {
         {
           status: SubtaskStatus.COMPLETED,
           output: 'WebSocket API endpoints implemented at /api/chat/ws with message handling',
+          featureId: feature.id,
+          subtaskId: backendSubtask.id,
+          updatedBy: 'backend-agent',
         },
         'backend-agent',
       );
@@ -139,6 +146,9 @@ describe('Features Integration Tests', () => {
         frontendSubtask.id,
         {
           status: SubtaskStatus.IN_PROGRESS,
+          featureId: feature.id,
+          subtaskId: frontendSubtask.id,
+          updatedBy: 'frontend-agent',
         },
         'frontend-agent',
       );
@@ -149,6 +159,9 @@ describe('Features Integration Tests', () => {
         {
           status: SubtaskStatus.COMPLETED,
           output: 'Chat UI components completed with real-time messaging integration',
+          featureId: feature.id,
+          subtaskId: frontendSubtask.id,
+          updatedBy: 'frontend-agent',
         },
         'frontend-agent',
       );
@@ -171,6 +184,9 @@ describe('Features Integration Tests', () => {
         {
           status: SubtaskStatus.COMPLETED,
           output: 'Mobile chat interface completed with native styling',
+          featureId: feature.id,
+          subtaskId: mobileSubtask.id,
+          updatedBy: 'mobile-agent',
         },
         'mobile-agent',
       );
@@ -210,6 +226,7 @@ describe('Features Integration Tests', () => {
           title: 'Optimize System Performance',
           description: 'Improve system performance across all components',
           priority: FeaturePriority.CRITICAL,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );
@@ -220,6 +237,7 @@ describe('Features Integration Tests', () => {
           title: 'Redesign User Interface',
           description: 'Modern UI/UX improvements',
           priority: FeaturePriority.HIGH,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );
@@ -230,6 +248,7 @@ describe('Features Integration Tests', () => {
           title: 'Critical Bug Fixes',
           description: 'Fix critical production bugs',
           priority: FeaturePriority.NORMAL,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );
@@ -246,6 +265,8 @@ describe('Features Integration Tests', () => {
           title: 'Database optimization',
           description: 'Optimize database queries',
           delegations: [{ agent: 'backend-agent', scope: 'Optimize slow database queries' }],
+          createdBy: 'coordinator',
+          featureId: feature1.id,
         },
         'coordinator',
       );
@@ -259,6 +280,8 @@ describe('Features Integration Tests', () => {
             { agent: 'backend-agent', scope: 'Redesign REST API structure' },
             { agent: 'frontend-agent', scope: 'Update frontend to use new API' },
           ],
+          createdBy: 'coordinator',
+          featureId: feature2.id,
         },
         'coordinator',
       );
@@ -269,6 +292,8 @@ describe('Features Integration Tests', () => {
           title: 'Fix authentication bugs',
           description: 'Fix critical auth issues',
           delegations: [{ agent: 'backend-agent', scope: 'Fix session management bugs' }],
+          createdBy: 'coordinator',
+          featureId: feature3.id,
         },
         'coordinator',
       );
@@ -305,6 +330,7 @@ describe('Features Integration Tests', () => {
           title: 'Active Feature',
           description: 'Test active feature',
           priority: FeaturePriority.HIGH,
+          createdBy: 'agent1',
         },
         'agent1',
       );
@@ -315,6 +341,7 @@ describe('Features Integration Tests', () => {
           title: 'Completed Feature',
           description: 'Test completed feature',
           priority: FeaturePriority.LOW,
+          createdBy: 'agent2',
         },
         'agent2',
       );
@@ -351,6 +378,8 @@ describe('Features Integration Tests', () => {
             { agent: 'backend-agent', scope: 'Backend work' },
             { agent: 'frontend-agent', scope: 'Frontend work' },
           ],
+          createdBy: 'coordinator',
+          featureId: feature1.id,
         },
         'coordinator',
       );
@@ -369,6 +398,8 @@ describe('Features Integration Tests', () => {
           title: 'Another Task',
           description: 'Another test task',
           delegations: [{ agent: 'test-agent', scope: 'Test work' }],
+          createdBy: 'coordinator',
+          featureId: feature1.id,
         },
         'coordinator',
       );
@@ -390,6 +421,9 @@ describe('Features Integration Tests', () => {
         subtask.id,
         {
           status: SubtaskStatus.COMPLETED,
+          featureId: feature1.id,
+          subtaskId: subtask.id,
+          updatedBy: 'test-agent',
         },
         'test-agent',
       );
@@ -417,6 +451,7 @@ describe('Features Integration Tests', () => {
           title: 'Test Concurrent Operations',
           description: 'Test concurrent subtask operations',
           priority: FeaturePriority.NORMAL,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );
@@ -429,6 +464,8 @@ describe('Features Integration Tests', () => {
           title: 'Concurrent Task',
           description: 'Task with multiple subtasks',
           delegations: [{ agent: 'agent1', scope: 'Agent 1 work' }],
+          createdBy: 'coordinator',
+          featureId: feature.id,
         },
         'coordinator',
       );
@@ -460,6 +497,9 @@ describe('Features Integration Tests', () => {
         subtask1.id,
         {
           status: SubtaskStatus.COMPLETED,
+          featureId: feature.id,
+          subtaskId: subtask1.id,
+          updatedBy: 'agent1',
         },
         'agent1',
       );
@@ -469,6 +509,9 @@ describe('Features Integration Tests', () => {
         subtask2.id,
         {
           status: SubtaskStatus.COMPLETED,
+          featureId: feature.id,
+          subtaskId: subtask2.id,
+          updatedBy: 'agent1',
         },
         'agent1',
       );
@@ -490,6 +533,7 @@ describe('Features Integration Tests', () => {
           title: 'Test Blocked Subtasks',
           description: 'Test handling of blocked subtasks',
           priority: FeaturePriority.NORMAL,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );
@@ -502,6 +546,8 @@ describe('Features Integration Tests', () => {
           title: 'Blockable Task',
           description: 'Task that can be blocked',
           delegations: [{ agent: 'agent1', scope: 'Agent 1 work' }],
+          createdBy: 'coordinator',
+          featureId: feature.id,
         },
         'coordinator',
       );
@@ -524,6 +570,9 @@ describe('Features Integration Tests', () => {
         {
           status: SubtaskStatus.BLOCKED,
           blockedReason: 'Waiting for external API approval',
+          featureId: feature.id,
+          subtaskId: subtask.id,
+          updatedBy: 'agent1',
         },
         'agent1',
       );
@@ -546,6 +595,9 @@ describe('Features Integration Tests', () => {
         {
           status: SubtaskStatus.COMPLETED,
           output: 'API approval received and implemented',
+          featureId: feature.id,
+          subtaskId: subtask.id,
+          updatedBy: 'agent1',
         },
         'agent1',
       );
@@ -565,6 +617,7 @@ describe('Features Integration Tests', () => {
           title: 'Test Pausable Feature',
           description: 'Feature that can be paused',
           priority: FeaturePriority.NORMAL,
+          createdBy: 'coordinator',
         },
         'coordinator',
       );

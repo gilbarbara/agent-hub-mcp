@@ -1,25 +1,7 @@
 import { FeaturesService } from '~/features/service';
 import { MessageService } from '~/messaging/service';
-import { StorageAdapter } from '~/storage';
 
-import { AgentRegistration } from '~/types';
-
-export interface HubStatusResult {
-  agents: {
-    active: AgentRegistration[];
-    inactive: AgentRegistration[];
-    total: number;
-  };
-  features: {
-    active: any[];
-    byPriority: { critical: number; high: number; low: number; normal: number };
-    total: number;
-  };
-  messages: {
-    recentActivity: number;
-    totalUnread: number;
-  };
-}
+import { AgentRegistration, HubStatusResult, StorageAdapter } from '~/types';
 
 export class AgentService {
   constructor(

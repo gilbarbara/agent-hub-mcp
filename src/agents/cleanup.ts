@@ -1,4 +1,4 @@
-import { StorageAdapter } from '~/storage';
+import { StorageAdapter } from '~/types';
 
 export class AgentStatusCleanup {
   private intervalId: NodeJS.Timeout | null = null;

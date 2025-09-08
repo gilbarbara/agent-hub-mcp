@@ -188,7 +188,7 @@ describe('MCP Protocol Compliance', () => {
       };
 
       for (const [toolName, input] of Object.entries(validInputs)) {
-        expect(() => validateToolInput(toolName, input)).not.toThrow();
+        expect(() => validateToolInput(toolName as any, input)).not.toThrow();
 
         // Should not throw when called on handler
         await expect(toolHandlers[toolName](input)).resolves.toBeDefined();
@@ -210,7 +210,7 @@ describe('MCP Protocol Compliance', () => {
 
       for (const [toolName, inputs] of Object.entries(invalidInputs)) {
         for (const input of inputs) {
-          expect(() => validateToolInput(toolName, input)).toThrow();
+          expect(() => validateToolInput(toolName as any, input)).toThrow();
         }
       }
     });

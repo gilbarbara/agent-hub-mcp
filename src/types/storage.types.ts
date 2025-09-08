@@ -1,3 +1,4 @@
+import { AgentRegistration } from './agents.types';
 import {
   AgentWorkload,
   Delegation,
@@ -6,9 +7,8 @@ import {
   FeatureFilters,
   ParentTask,
   Subtask,
-} from '~/features/types';
-
-import { AgentRegistration, Message } from '~/types';
+} from './features.types';
+import { Message } from './messages.types';
 
 /**
  * Storage interface for Agent Hub MCP data persistence.

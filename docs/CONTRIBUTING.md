@@ -83,7 +83,7 @@ src/
 ├── tools/           # MCP tool definitions
 ├── storage/         # File-based persistence
 ├── validation/      # Input validation and security
-└── types.ts         # TypeScript types
+└── types         # TypeScript types
 ```
 
 ## Storage Structure

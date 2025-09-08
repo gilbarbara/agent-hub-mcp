@@ -1,4 +1,3 @@
-import { StorageAdapter } from '~/storage';
 import {
   validateIdentifier,
   validateMessagePriority,
@@ -7,16 +6,19 @@ import {
   validateString,
 } from '~/validation';
 
+import { StorageAdapter } from '~/types';
+import { GetMessagesInput, SendMessageInput } from '~/types/tool-inputs.types';
+
 import { MessageService } from './service';
 
 export function createMessageHandlers(
   messageService: MessageService,
   storage: StorageAdapter,
-  sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>,
+  sendNotificationToAgent: (agentId: string, method: string, params: unknown) => Promise<void>,
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>,
 ) {
   return {
-    async send_message(arguments_: any) {
+    async send_message(arguments_: SendMessageInput) {
       // Validate all inputs
       const from = validateIdentifier(arguments_.from, 'from');
       const to = validateIdentifier(arguments_.to, 'to');
@@ -69,7 +71,7 @@ export function createMessageHandlers(
       return { success: true, messageId };
     },
 
-    async get_messages(arguments_: any) {
+    async get_messages(arguments_: GetMessagesInput) {
       const agent = validateIdentifier(arguments_.agent, 'agent');
       const type = arguments_.type ? validateMessageType(arguments_.type) : undefined;
       const since = arguments_.since as number;

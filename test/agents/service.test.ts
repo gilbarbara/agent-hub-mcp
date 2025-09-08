@@ -3,9 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentService } from '~/agents/service';
 import { FeaturesService } from '~/features/service';
 import { MessageService } from '~/messaging/service';
-import { StorageAdapter } from '~/storage';
 
-import { AgentRegistration } from '~/types';
+import { AgentRegistration, StorageAdapter } from '~/types';
 
 describe('AgentService', () => {
   let agentService: AgentService;

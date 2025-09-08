@@ -29,7 +29,7 @@ async function main() {
   let mcpServer: any = null;
 
   // Notification functions for stdio transport
-  async function broadcastNotification(method: string, _params: any) {
+  async function broadcastNotification(method: string, _params: unknown) {
     if (mcpServer) {
       // eslint-disable-next-line no-console
       console.error(`📡 Broadcasting ${method} via stdio transport`);
@@ -44,7 +44,7 @@ async function main() {
     }
   }
 
-  async function sendNotificationToAgent(agentId: string, method: string, _params: any) {
+  async function sendNotificationToAgent(agentId: string, method: string, _params: unknown) {
     if (mcpServer) {
       // eslint-disable-next-line no-console
       console.error(`📤 Sending ${method} to agent ${agentId} via stdio transport`);

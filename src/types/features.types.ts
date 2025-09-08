@@ -1,3 +1,5 @@
+import { AuditableEntity, FilterOptions, StatusEntity } from './common.types';
+
 export enum DelegationStatus {
   PENDING = 'pending',
   ACCEPTED = 'accepted',
@@ -37,6 +39,13 @@ export enum TaskStatus {
 }
 
 /**
+ * Feature list filters
+ */
+export type FeatureFilters = FilterOptions<Pick<Feature, 'status' | 'priority' | 'createdBy'>> & {
+  agent?: string;
+};
+
+/**
  * Agent's work within a specific feature
  */
 export interface AgentFeatureWork {
@@ -65,17 +74,28 @@ export interface CreateDelegationInput {
  * Feature creation input
  */
 export interface CreateFeatureInput {
+  createdBy: string;
   description: string;
   estimatedAgents?: string[];
   name: string;
-  priority: FeaturePriority;
+  priority?: FeaturePriority;
   title: string;
 }
 
 /**
- * Subtask creation input
+ * Subtask creation input (for MCP tool)
  */
 export interface CreateSubtaskInput {
+  createdBy: string;
+  delegationId: string;
+  featureId: string;
+  subtasks: SubtaskData[];
+}
+
+/**
+ * Subtask creation input (for service method)
+ */
+export interface CreateSubtaskServiceInput {
   dependsOn?: string[];
   description?: string;
   title: string;
@@ -85,42 +105,38 @@ export interface CreateSubtaskInput {
  * Task creation input within a feature
  */
 export interface CreateTaskInput {
-  delegations: CreateDelegationInput[];
+  createdBy: string;
+  delegations: Array<{
+    agent: string;
+    scope: string;
+  }>;
   description: string;
+  featureId: string;
   title: string;
 }
 
 /**
  * Work assigned to specific agents within a feature
  */
-export interface Delegation {
+export interface Delegation extends AuditableEntity, StatusEntity<DelegationStatus> {
   acceptedAt?: number;
   agent: string;
   completedAt?: number;
-  createdAt: number;
-  id: string;
   parentTaskId: string;
   scope: string;
-  status: DelegationStatus;
   subtaskIds: string[];
-  updatedAt: number;
 }
 
 /**
  * Represents an epic or major feature that spans multiple repositories and agents
  */
-export interface Feature {
+export interface Feature extends AuditableEntity, StatusEntity<FeatureStatus> {
   assignedAgents?: string[];
-  createdAt: number;
-  createdBy: string;
   description: string;
   estimatedAgents?: string[];
-  id: string;
   name: string;
   priority: FeaturePriority;
-  status: FeatureStatus;
   title: string;
-  updatedAt: number;
 }
 
 /**
@@ -134,45 +150,34 @@ export interface FeatureData {
 }
 
 /**
- * Feature list filters
- */
-export interface FeatureFilters {
-  agent?: string;
-  createdBy?: string;
-  priority?: FeaturePriority;
-  status?: FeatureStatus;
-}
-
-/**
  * Represents a major work item within a feature
  */
-export interface ParentTask {
+export interface ParentTask extends AuditableEntity, StatusEntity<TaskStatus> {
   approvedAt?: number;
-  createdAt: number;
-  createdBy: string;
   description: string;
-  id: string;
-  status: TaskStatus;
   title: string;
-  updatedAt: number;
 }
 
 /**
  * Specific implementation work created by domain agents
  */
-export interface Subtask {
+export interface Subtask extends AuditableEntity, StatusEntity<SubtaskStatus> {
   blockedReason?: string;
-  createdAt: number;
-  createdBy: string;
   delegationId: string;
   dependsOn: string[];
   description?: string;
-  id: string;
   output?: string;
   parentTaskId: string;
-  status: SubtaskStatus;
   title: string;
-  updatedAt: number;
+}
+
+/**
+ * Individual subtask data for creation
+ */
+export interface SubtaskData {
+  dependsOn?: string[];
+  description?: string;
+  title: string;
 }
 
 /**
@@ -180,8 +185,11 @@ export interface Subtask {
  */
 export interface UpdateSubtaskInput {
   blockedReason?: string;
+  featureId: string;
   output?: string;
   status?: SubtaskStatus;
+  subtaskId: string;
+  updatedBy: string;
 }
 
 /**

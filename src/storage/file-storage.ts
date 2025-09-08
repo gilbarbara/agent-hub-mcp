@@ -4,20 +4,19 @@ import * as path from 'path';
 
 import {
   AgentFeatureWork,
+  AgentRegistration,
   AgentWorkload,
   Delegation,
   Feature,
   FeatureData,
   FeatureFilters,
   FeatureStatus,
+  Message,
   ParentTask,
   PRIORITY_ORDER,
+  StorageAdapter,
   Subtask,
-} from '~/features/types';
-
-import { AgentRegistration, Message } from '~/types';
-
-import { StorageAdapter } from './types';
+} from '~/types';
 
 /**
  * File-based storage implementation for Agent Hub MCP.

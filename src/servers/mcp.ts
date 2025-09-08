@@ -9,18 +9,18 @@ import {
 
 import { AgentService } from '~/agents/service';
 import { AgentSession } from '~/agents/session';
-import { FeatureStatus } from '~/features/types';
 import { MessageService } from '~/messaging/service';
-import { StorageAdapter } from '~/storage';
 import { TOOLS } from '~/tools/definitions';
 import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';
 
+import { FeatureStatus, StorageAdapter } from '~/types';
+
 export interface McpServerDependencies {
   agentService: AgentService;
-  broadcastNotification: (method: string, params: any) => Promise<void>;
+  broadcastNotification: (method: string, params: unknown) => Promise<void>;
   getCurrentSession: () => AgentSession | undefined;
   messageService: MessageService;
-  sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
+  sendNotificationToAgent: (agentId: string, method: string, params: unknown) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
   storage: StorageAdapter;
 }
@@ -165,7 +165,7 @@ ${
         throw new Error(`Unknown tool: ${name}`);
       }
 
-      const result = await handler(arguments_);
+      const result = await handler(arguments_ as any);
 
       return {
         content: [

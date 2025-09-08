@@ -83,7 +83,7 @@ export class NotificationService {
   /**
    * Send a custom notification to a specific agent
    */
-  async sendNotificationToAgent(agentId: string, method: string, params?: any): Promise<void> {
+  async sendNotificationToAgent(agentId: string, method: string, params?: unknown): Promise<void> {
     console.log(`📤 Sending ${method} to agent ${agentId}`);
 
     const session = this.findSessionByAgentId(agentId);
@@ -96,18 +96,22 @@ export class NotificationService {
 
     // Send notifications with actual content
     switch (method) {
-      case 'new_message':
+      case 'new_message': {
         // Send the actual message content via SSE
-        if (params?.message) {
-          console.log(`  → Delivering message: ${params.message.id}`);
+        const p = params as any;
+
+        if (p?.message) {
+          console.log(`  → Delivering message: ${p.message.id}`);
           await this.sendCustomNotification(session.server, 'new_message', {
-            message: params.message,
+            message: p.message,
           });
         }
 
         // Also trigger resource list change for compatibility
         await this.sendResourceListChanged(session.server);
         break;
+      }
+
       case 'context_updated':
       case 'task_updated':
         await this.sendCustomNotification(session.server, method, params);
@@ -128,7 +132,7 @@ export class NotificationService {
   /**
    * Broadcast a notification to all connected agents
    */
-  async broadcastNotification(method: string, _params?: any): Promise<void> {
+  async broadcastNotification(method: string, _params?: unknown): Promise<void> {
     console.log(`📡 Broadcasting ${method} to ${this.sessions.size} agents`);
 
     // Map to appropriate MCP notification
@@ -174,7 +178,7 @@ export class NotificationService {
   private async sendCustomNotification(
     _server: Server,
     method: string,
-    params: any,
+    params: unknown,
   ): Promise<void> {
     try {
       console.log(

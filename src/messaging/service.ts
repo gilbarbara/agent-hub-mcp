@@ -1,8 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import { StorageAdapter } from '~/storage';
-
-import { Message, MessagePriority, MessageType } from '~/types';
+import { Message, MessagePriority, MessageType, StorageAdapter } from '~/types';
 
 export class MessageService {
   constructor(private readonly storage: StorageAdapter) {}

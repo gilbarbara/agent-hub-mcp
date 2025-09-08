@@ -8,7 +8,8 @@ import { AgentStatusCleanup } from '~/agents/cleanup';
 import { AgentService } from '~/agents/service';
 import { AgentSession, SessionManager } from '~/agents/session';
 import { MessageService } from '~/messaging/service';
-import { StorageAdapter } from '~/storage';
+
+import { StorageAdapter } from '~/types';
 
 import { createMcpServer } from './mcp';
 import { NotificationService } from './notifications';
@@ -20,24 +21,26 @@ export interface HttpServerDependencies {
 }
 
 // JSON-RPC 2.0 compliant error helper
-function createJsonRpcError(code: number, message: string, data?: any, id: any = null) {
+function createJsonRpcError(code: number, message: string, data?: unknown, id: unknown = null) {
   return {
     jsonrpc: '2.0',
-    error: { code, message, ...(data && { data }) },
+    error: data ? { code, message, data } : { code, message },
     id,
   };
 }
 
 // More lenient initialization check for Claude Code compatibility
-function isInitializeRequest(body: any): boolean {
+function isInitializeRequest(body: unknown): boolean {
+  const b = body as any;
+
   return (
     body &&
-    body.jsonrpc === '2.0' &&
-    body.method === 'initialize' &&
-    body.params &&
-    typeof body.params === 'object' &&
-    body.params.protocolVersion &&
-    body.params.capabilities
+    b.jsonrpc === '2.0' &&
+    b.method === 'initialize' &&
+    b.params &&
+    typeof b.params === 'object' &&
+    b.params.protocolVersion &&
+    b.params.capabilities
   );
 }
 
@@ -52,11 +55,11 @@ export function createHttpServer(deps: HttpServerDependencies): Express {
   agentCleanup.startPeriodicCleanup();
 
   // Notification system using MCP's built-in notifications
-  async function broadcastNotification(method: string, params: any) {
+  async function broadcastNotification(method: string, params: unknown) {
     await notificationService.broadcastNotification(method, params);
   }
 
-  async function sendNotificationToAgent(agentId: string, method: string, params: any) {
+  async function sendNotificationToAgent(agentId: string, method: string, params: unknown) {
     await notificationService.sendNotificationToAgent(agentId, method, params);
   }
 

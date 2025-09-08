@@ -1,24 +1,24 @@
 import { createId } from '@paralleldrive/cuid2';
 
-import type { StorageAdapter } from '~/storage/types';
-
 import {
   AgentWorkload,
   CreateFeatureInput,
-  CreateSubtaskInput,
+  CreateSubtaskServiceInput,
   CreateTaskInput,
   Delegation,
   DelegationStatus,
   Feature,
   FeatureData,
   FeatureFilters,
+  FeaturePriority,
   FeatureStatus,
   ParentTask,
+  StorageAdapter,
   Subtask,
   SubtaskStatus,
   TaskStatus,
   UpdateSubtaskInput,
-} from './types';
+} from '~/types';
 
 export class FeaturesService {
   constructor(private storage: StorageAdapter) {}
@@ -33,7 +33,7 @@ export class FeaturesService {
       description: input.description,
       status: FeatureStatus.PLANNING,
       createdBy,
-      priority: input.priority,
+      priority: input.priority ?? FeaturePriority.NORMAL,
       estimatedAgents: input.estimatedAgents,
       assignedAgents: [],
       createdAt: now,
@@ -93,6 +93,7 @@ export class FeaturesService {
       scope: del.scope,
       status: DelegationStatus.PENDING,
       subtaskIds: [],
+      createdBy,
       createdAt: now,
       updatedAt: now,
     }));
@@ -137,7 +138,7 @@ export class FeaturesService {
   async createSubtask(
     featureId: string,
     delegationId: string,
-    input: CreateSubtaskInput,
+    input: CreateSubtaskServiceInput,
     createdBy: string,
   ): Promise<Subtask> {
     const delegation = await this.storage.getDelegation(featureId, delegationId);

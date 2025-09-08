@@ -206,7 +206,7 @@ src/
 ├── tools/           # MCP tool definitions & handlers
 ├── storage/         # File-based and indexed persistence
 ├── validation/      # Input validation and security
-└── types.ts         # TypeScript interfaces
+└── types/         # TypeScript interfaces
 ```
 
 ### Testing Strategies

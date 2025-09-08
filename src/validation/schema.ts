@@ -1,6 +1,8 @@
-import Ajv from 'ajv';
+import Ajv, { ValidateFunction } from 'ajv';
 
 import { TOOLS } from '~/tools/definitions';
+
+import { ToolInputMap } from '~/types/tool-inputs.types';
 
 // Create AJV instance with validation options
 const ajv = new Ajv({
@@ -11,7 +13,7 @@ const ajv = new Ajv({
 });
 
 // Create a map of tool name to compiled validator
-const validators = new Map<string, any>();
+const validators = new Map<string, ValidateFunction>();
 
 // Initialize validators from tool definitions
 for (const tool of TOOLS) {
@@ -27,7 +29,10 @@ for (const tool of TOOLS) {
  * @throws Error if validation fails
  * @returns The validated arguments (potentially with defaults applied)
  */
-export function validateToolInput(toolName: string, arguments_: any): any {
+export function validateToolInput<T extends keyof ToolInputMap>(
+  toolName: T,
+  arguments_: unknown,
+): ToolInputMap[T] {
   const validator = validators.get(toolName);
 
   if (!validator) {
@@ -47,5 +52,5 @@ export function validateToolInput(toolName: string, arguments_: any): any {
     throw new Error(`Validation failed for tool '${toolName}': ${errorMessages.join(', ')}`);
   }
 
-  return arguments_;
+  return arguments_ as ToolInputMap[T];
 }

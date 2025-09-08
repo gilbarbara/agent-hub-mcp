@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FeaturesService } from '~/features/service';
+
 import {
   CreateFeatureInput,
-  CreateSubtaskInput,
+  CreateSubtaskServiceInput,
   CreateTaskInput,
   Delegation,
   DelegationStatus,
@@ -15,7 +16,7 @@ import {
   SubtaskStatus,
   TaskStatus,
   UpdateSubtaskInput,
-} from '~/features/types';
+} from '~/types';
 
 describe('FeaturesService', () => {
   let mockStorage: any;
@@ -70,6 +71,7 @@ describe('FeaturesService', () => {
         description: 'Test feature description',
         priority: FeaturePriority.HIGH,
         estimatedAgents: ['agent1', 'agent2'],
+        createdBy: 'test-agent',
       };
 
       const result = await service.createFeature(input, 'creator-agent');
@@ -95,6 +97,7 @@ describe('FeaturesService', () => {
         title: 'Test Title',
         description: 'Test description',
         priority: FeaturePriority.NORMAL,
+        createdBy: 'creator',
       };
 
       const result = await service.createFeature(input, 'creator');
@@ -126,6 +129,8 @@ describe('FeaturesService', () => {
       const input: CreateTaskInput = {
         title: 'Test Task',
         description: 'Task description',
+        createdBy: 'creator',
+        featureId: 'test-feature',
         delegations: [
           { agent: 'agent1', scope: 'Backend work' },
           { agent: 'agent2', scope: 'Frontend work' },
@@ -163,6 +168,8 @@ describe('FeaturesService', () => {
       const input: CreateTaskInput = {
         title: 'Test Task',
         description: 'Task description',
+        createdBy: 'creator',
+        featureId: 'nonexistent',
         delegations: [{ agent: 'agent1', scope: 'Work' }],
       };
 
@@ -180,6 +187,7 @@ describe('FeaturesService', () => {
       scope: 'Test work',
       status: DelegationStatus.PENDING,
       subtaskIds: [],
+      createdBy: 'test-creator',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -230,6 +238,7 @@ describe('FeaturesService', () => {
       scope: 'Test work',
       status: DelegationStatus.ACCEPTED,
       subtaskIds: [],
+      createdBy: 'test-creator',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -239,7 +248,7 @@ describe('FeaturesService', () => {
     });
 
     it('should create a subtask for accepted delegation', async () => {
-      const input: CreateSubtaskInput = {
+      const input: CreateSubtaskServiceInput = {
         title: 'Test Subtask',
         description: 'Subtask description',
         dependsOn: ['other-subtask-id'],
@@ -268,7 +277,7 @@ describe('FeaturesService', () => {
 
       mockStorage.getDelegation.mockResolvedValue(pendingDelegation);
 
-      const input: CreateSubtaskInput = {
+      const input: CreateSubtaskServiceInput = {
         title: 'Test Subtask',
       };
 
@@ -280,7 +289,7 @@ describe('FeaturesService', () => {
     });
 
     it('should throw error if wrong agent creates subtask', async () => {
-      const input: CreateSubtaskInput = {
+      const input: CreateSubtaskServiceInput = {
         title: 'Test Subtask',
       };
 
@@ -311,6 +320,9 @@ describe('FeaturesService', () => {
       const updates: UpdateSubtaskInput = {
         status: SubtaskStatus.COMPLETED,
         output: 'Task completed successfully',
+        featureId: 'feature-1',
+        subtaskId: 'sub-1',
+        updatedBy: 'agent1',
       };
 
       await service.updateSubtask('feature-1', 'sub-1', updates, 'agent1');
@@ -324,6 +336,9 @@ describe('FeaturesService', () => {
     it('should throw error if wrong agent updates subtask', async () => {
       const updates: UpdateSubtaskInput = {
         status: SubtaskStatus.COMPLETED,
+        featureId: 'feature-1',
+        subtaskId: 'sub-1',
+        updatedBy: 'wrong-agent',
       };
 
       await expect(
@@ -334,6 +349,9 @@ describe('FeaturesService', () => {
     it('should check delegation completion when subtask completed', async () => {
       const updates: UpdateSubtaskInput = {
         status: SubtaskStatus.COMPLETED,
+        featureId: 'feature-1',
+        subtaskId: 'sub-1',
+        updatedBy: 'agent1',
       };
 
       // Mock delegation check
@@ -344,6 +362,7 @@ describe('FeaturesService', () => {
         scope: 'Test work',
         status: DelegationStatus.IN_PROGRESS,
         subtaskIds: ['sub-1'],
+        createdBy: 'test-creator',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

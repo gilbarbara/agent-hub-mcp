@@ -6,17 +6,32 @@ import { AgentSession } from '~/agents/session';
 import { FeaturesHandler } from '~/features/handlers';
 import { createMessageHandlers } from '~/messaging/handlers';
 import { MessageService } from '~/messaging/service';
-import { StorageAdapter } from '~/storage';
 import { validateToolInput } from '~/validation';
 
-import { AgentRegistration, SyncErrorResult, SyncResult } from '~/types';
+import {
+  AcceptDelegationInput,
+  AgentRegistration,
+  CreateFeatureInput,
+  CreateSubtaskInput,
+  CreateTaskInput,
+  GetFeatureInput,
+  GetFeaturesInput,
+  GetMessagesInput,
+  RegisterAgentInput,
+  SendMessageInput,
+  StorageAdapter,
+  SyncErrorResult,
+  SyncInput,
+  SyncResult,
+  UpdateSubtaskInput,
+} from '~/types';
 
 export interface ToolHandlerServices {
   agentService: AgentService;
-  broadcastNotification: (method: string, params: any) => Promise<void>;
+  broadcastNotification: (method: string, params: unknown) => Promise<void>;
   getCurrentSession: () => AgentSession | undefined;
   messageService: MessageService;
-  sendNotificationToAgent: (agentId: string, method: string, params: any) => Promise<void>;
+  sendNotificationToAgent: (agentId: string, method: string, params: unknown) => Promise<void>;
   sendResourceNotification?: (agentId: string, uri: string) => Promise<void>;
   storage: StorageAdapter;
 }
@@ -31,30 +46,30 @@ export function createToolHandlers(services: ToolHandlerServices) {
   const featuresHandler = new FeaturesHandler(services.storage);
 
   return {
-    async send_message(arguments_: any) {
+    async send_message(arguments_: SendMessageInput) {
       const validatedArguments = validateToolInput('send_message', arguments_);
 
       // Instant notification is now handled directly in the message handler
       return messageHandlers.send_message(validatedArguments);
     },
 
-    async get_messages(arguments_: any) {
+    async get_messages(arguments_: GetMessagesInput) {
       const validatedArguments = validateToolInput('get_messages', arguments_);
 
       return messageHandlers.get_messages(validatedArguments);
     },
 
-    async register_agent(arguments_: any) {
+    async register_agent(arguments_: RegisterAgentInput) {
       const validatedArguments = validateToolInput('register_agent', arguments_);
       const currentSession = services.getCurrentSession();
       let agent: AgentRegistration;
       let isExistingAgent = false;
 
-      const projectPath = validatedArguments.projectPath as string;
+      const { projectPath } = validatedArguments;
 
       // Determine the agent ID that would be used
       const proposedAgentId = validatedArguments.id
-        ? (validatedArguments.id as string)
+        ? validatedArguments.id
         : path.basename(projectPath);
 
       // Check for conflicts: existing agent ID with different project path
@@ -89,7 +104,7 @@ export function createToolHandlers(services: ToolHandlerServices) {
 
         // Update role if provided
         if (validatedArguments.role) {
-          agent.role = validatedArguments.role as string;
+          agent.role = validatedArguments.role;
         }
 
         // Merge capabilities if provided
@@ -101,12 +116,12 @@ export function createToolHandlers(services: ToolHandlerServices) {
 
         // Update collaboratesWith if provided
         if (validatedArguments.collaboratesWith) {
-          agent.collaboratesWith = validatedArguments.collaboratesWith as string[];
+          agent.collaboratesWith = validatedArguments.collaboratesWith;
         }
       } else {
         // No existing agent - create new one with clean ID (no random suffix)
         const agentId = validatedArguments.id
-          ? (validatedArguments.id as string) // User provided ID - use as-is
+          ? validatedArguments.id // User provided ID - use as-is
           : path.basename(projectPath); // No ID provided: extract from project path
 
         // Create agent using project-based detection
@@ -123,23 +138,23 @@ export function createToolHandlers(services: ToolHandlerServices) {
 
           // Use provided role if specified
           if (validatedArguments.role) {
-            agent.role = validatedArguments.role as string;
+            agent.role = validatedArguments.role;
           }
 
           // Set collaboratesWith if provided
           if (validatedArguments.collaboratesWith) {
-            agent.collaboratesWith = validatedArguments.collaboratesWith as string[];
+            agent.collaboratesWith = validatedArguments.collaboratesWith;
           }
         } else {
           // Manual registration with provided info only
           agent = {
             id: agentId,
             projectPath,
-            role: validatedArguments.role as string,
-            capabilities: (validatedArguments.capabilities as string[]) ?? [],
+            role: validatedArguments.role,
+            capabilities: validatedArguments.capabilities ?? [],
             status: 'active',
             lastSeen: Date.now(),
-            collaboratesWith: (validatedArguments.collaboratesWith as string[]) ?? [],
+            collaboratesWith: validatedArguments.collaboratesWith ?? [],
           };
         }
       }
@@ -175,14 +190,14 @@ export function createToolHandlers(services: ToolHandlerServices) {
       };
     },
 
-    async get_hub_status(arguments_: any) {
+    async get_hub_status(arguments_: Record<string, never>) {
       validateToolInput('get_hub_status', arguments_);
 
       return services.agentService.getHubStatus();
     },
 
     // Features system tools
-    async create_feature(arguments_: any) {
+    async create_feature(arguments_: CreateFeatureInput) {
       const result = await featuresHandler.handleFeatureTool('create_feature', arguments_);
 
       // Broadcast feature creation notification
@@ -195,7 +210,7 @@ export function createToolHandlers(services: ToolHandlerServices) {
       return result;
     },
 
-    async create_task(arguments_: any) {
+    async create_task(arguments_: CreateTaskInput) {
       const result = await featuresHandler.handleFeatureTool('create_task', arguments_);
 
       // Broadcast task creation notification
@@ -210,19 +225,19 @@ export function createToolHandlers(services: ToolHandlerServices) {
       return result;
     },
 
-    async create_subtask(arguments_: any) {
+    async create_subtask(arguments_: CreateSubtaskInput) {
       return featuresHandler.handleFeatureTool('create_subtask', arguments_);
     },
 
-    async get_features(arguments_: any) {
+    async get_features(arguments_: GetFeaturesInput) {
       return featuresHandler.handleFeatureTool('get_features', arguments_);
     },
 
-    async get_feature(arguments_: any) {
+    async get_feature(arguments_: GetFeatureInput) {
       return featuresHandler.handleFeatureTool('get_feature', arguments_);
     },
 
-    async accept_delegation(arguments_: any) {
+    async accept_delegation(arguments_: AcceptDelegationInput) {
       const result = await featuresHandler.handleFeatureTool('accept_delegation', arguments_);
 
       // Broadcast delegation acceptance notification
@@ -237,7 +252,7 @@ export function createToolHandlers(services: ToolHandlerServices) {
       return result;
     },
 
-    async update_subtask(arguments_: any) {
+    async update_subtask(arguments_: UpdateSubtaskInput) {
       const result = await featuresHandler.handleFeatureTool('update_subtask', arguments_);
 
       // Broadcast subtask update notification
@@ -252,9 +267,9 @@ export function createToolHandlers(services: ToolHandlerServices) {
       return result;
     },
 
-    async sync(arguments_: any): Promise<SyncResult | SyncErrorResult> {
+    async sync(arguments_: SyncInput): Promise<SyncResult | SyncErrorResult> {
       const validatedArguments = validateToolInput('sync', arguments_);
-      const agentId = validatedArguments.agentId as string;
+      const { agentId } = validatedArguments;
       const markAsRead = validatedArguments.markAsRead !== false; // Default to true
 
       try {
@@ -293,10 +308,10 @@ export function createToolHandlers(services: ToolHandlerServices) {
           workload: workloadResult,
           hubStatus: hubStatusResult,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return {
           success: false,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: Date.now(),
         };
       }

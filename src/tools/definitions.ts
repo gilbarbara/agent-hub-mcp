@@ -1,8 +1,6 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
-import { FeaturePriority, FeatureStatus } from '~/features/types';
-
-import { MessagePriority, MessageType } from '~/types';
+import { FeaturePriority, FeatureStatus, MessagePriority, MessageType } from '~/types';
 
 export const TOOLS: Tool[] = [
   {
