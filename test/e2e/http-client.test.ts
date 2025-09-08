@@ -2,8 +2,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
 async function parseSSEResponse(response: Response): Promise<any> {
   const reader = response.body?.getReader();
 

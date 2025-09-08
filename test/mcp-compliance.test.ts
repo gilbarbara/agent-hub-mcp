@@ -1,5 +1,4 @@
 /* eslint-disable @vitest/no-conditional-expect */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TOOLS } from '~/tools/definitions';
 import { createToolHandlers, ToolHandlerServices } from '~/tools/handlers';

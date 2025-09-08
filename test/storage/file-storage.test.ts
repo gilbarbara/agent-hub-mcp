@@ -1,8 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { FileStorage } from '~/storage/file-storage';
 
 import { AgentRegistration, Message, MessagePriority, MessageType } from '~/types';
