@@ -57,7 +57,8 @@
   ],
   "bin": {
     "agent-hub-mcp": "dist/index.js",
-    "agent-hub-mcp-http": "dist/index-http.js"
+    "agent-hub-mcp-http": "dist/index-http.js",
+    "agent-hub-mcp-checker": "dist/checker.js"
   },
   "sideEffects": false,
   "license": "MIT",
@@ -113,7 +114,8 @@
     "dts": true,
     "entry": [
       "src/index.ts",
-      "src/index-http.ts"
+      "src/index-http.ts",
+      "src/checker.ts"
     ],
     "format": [
       "cjs",

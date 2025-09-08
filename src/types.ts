@@ -23,6 +23,17 @@ export interface AgentRegistration {
   status: 'active' | 'idle' | 'offline';
 }
 
+export interface JsonRpcResponse {
+  id: number;
+  jsonrpc: string;
+  result: {
+    content: Array<{
+      text: string;
+      type: string;
+    }>;
+  };
+}
+
 export interface Message {
   content: string;
   from: string;

@@ -73,29 +73,56 @@ mkdir -p ~/.qwen/commands/hub  # or ~/.gemini/commands/hub
 cp /tmp/agent-hub-mcp/commands/toml/*.toml ~/.qwen/commands/hub/
 ```
 
-This enables slash commands like `/hub:register`, `/hub:sync`, and `/hub:status` for seamless interaction.
+This enables slash commands for:
+
+- `/hub:register` (join the hub)
+- `/hub:sync` (check for messages and workloads)
+-  `/hub:status` (view hub activity)
 
 ### Step 3: Restart Your AI Assistant
 Close and reopen your AI assistant completely for changes to take effect.
 
 ### Step 4: Verify Installation
 
-**With Custom Commands:**
+**Register your agent:**
 ```bash
-/hub:status
+/hub:register
 ```
-You should see: `📊 Hub Status Overview` with your agent listed
+You should see: `✅ Registered with Agent Hub as [your-project-name]`
 
 **Without Custom Commands:**
-Ask your AI assistant: "Check the Hub status"
-Expected response: Confirmation that Agent Hub MCP is connected and running
+Ask your AI assistant: "Register with the Agent Hub" then "Check the Hub status"
+Expected response: Confirmation that you're registered and connected
 
 **Troubleshooting Verification:**
 - ❌ No response → Check MCP server configuration and restart AI assistant
 - ❌ Connection error → Verify `npx -y agent-hub-mcp@latest` command
-- ❌ Commands not found → Ensure custom commands are installed in correct directory
+- ❌ Commands not found → Ensure custom commands are installed in the correct directory
 
 ✅ **Success!** You should see Agent Hub MCP status information. You're ready to collaborate!
+
+### 📬 Automatic Message Notifications (Optional)
+
+Set up automatic notifications when other agents send you messages by adding a hook to your Claude Code settings:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y agent-hub-mcp-checker"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This will automatically check for unread messages after each command and display: `📬 You have X unread messages from other agents. Type '/hub:sync' to check.`
 
 
 
